@@ -18,6 +18,7 @@
 package org.apache.streampark.flink.client.`trait`
 
 import org.apache.streampark.common.enums.{FlinkDeployMode, FlinkK8sRestExposedType}
+import org.apache.streampark.flink.client.{K8sIngressClusterDescriptor, K8sIngressClusterHelper}
 import org.apache.streampark.flink.client.bean._
 import org.apache.streampark.flink.kubernetes.PodTemplateTool
 import org.apache.streampark.flink.packer.pipeline.DockerImageBuildResponse
@@ -28,8 +29,10 @@ import org.apache.flink.client.deployment.ClusterSpecification
 import org.apache.flink.client.program.ClusterClient
 import org.apache.flink.configuration._
 import org.apache.flink.kubernetes.{KubernetesClusterClientFactory, KubernetesClusterDescriptor}
+import org.apache.flink.kubernetes.artifact.DefaultKubernetesArtifactUploader
 import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions
 import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions.ServiceExposedType
+import org.apache.flink.kubernetes.kubeclient.FlinkKubeClientFactory
 
 import javax.annotation.Nonnull
 
@@ -70,11 +73,12 @@ trait KubernetesNativeClientTrait extends FlinkClientTrait {
       flinkConfig.removeConfig(KubernetesConfigOptions.NAMESPACE)
     }
 
-    logInfo(s"""
-               |------------------------------------------------------------------
-               |Effective submit configuration: $flinkConfig
-               |------------------------------------------------------------------
-               |""".stripMargin)
+    logInfo(
+      s"""
+         |------------------------------------------------------------------
+         |Effective submit configuration: $flinkConfig
+         |------------------------------------------------------------------
+         |""".stripMargin)
   }
 
   // Tip: Perhaps it would be better to let users freely specify the savepoint directory
@@ -108,11 +112,11 @@ trait KubernetesNativeClientTrait extends FlinkClientTrait {
       .safeSet(KubernetesConfigOptions.CLUSTER_ID, request.clusterId)
       .safeSet(KubernetesConfigOptions.NAMESPACE, request.kubernetesNamespace)
 
-    var clusterDescriptor: KubernetesClusterDescriptor = null
+    var clusterDescriptor: K8sIngressClusterDescriptor = null
     var client: ClusterClient[String] = null
-
+    val k8sClient = K8sIngressClusterHelper.createK8sClient(flinkConfig)
     try {
-      clusterDescriptor = getK8sClusterDescriptor(flinkConfig)
+      clusterDescriptor = getK8sIngressClusterDescriptor(flinkConfig)
       client = clusterDescriptor
         .retrieve(flinkConfig.getString(KubernetesConfigOptions.CLUSTER_ID))
         .getClusterClient
@@ -122,6 +126,7 @@ trait KubernetesNativeClientTrait extends FlinkClientTrait {
         logger.error(s"$hints mode=${flinkConfig.get(DeploymentOptions.TARGET)}, request=$request")
         throw e
     } finally {
+      if (k8sClient != null) k8sClient.close()
       if (client != null) client.close()
       if (clusterDescriptor != null) clusterDescriptor.close()
     }
@@ -166,9 +171,27 @@ trait KubernetesNativeClientTrait extends FlinkClientTrait {
     clientFactory.createClusterDescriptor(flinkConfig)
   }
 
+  def getK8sIngressClusterDescriptorAndSpecification(
+      flinkConfig: Configuration): (KubernetesClusterDescriptor, ClusterSpecification) = {
+    val clientFactory = new KubernetesClusterClientFactory()
+    val clusterDescriptor = this.getK8sIngressClusterDescriptor(flinkConfig)
+    val clusterSpecification =
+      clientFactory.getClusterSpecification(flinkConfig)
+    (clusterDescriptor, clusterSpecification)
+  }
+
+  def getK8sIngressClusterDescriptor(flinkConfig: Configuration): K8sIngressClusterDescriptor = {
+    new K8sIngressClusterDescriptor(
+      flinkConfig,
+      FlinkKubeClientFactory.getInstance,
+      new DefaultKubernetesArtifactUploader)
+  }
+
   protected def flinkConfIdentifierInfo(@Nonnull conf: Configuration): String =
-    s"deployMode=${conf.get(DeploymentOptions.TARGET)}, clusterId=${conf.get(
-        KubernetesConfigOptions.CLUSTER_ID)}, " +
+    s"deployMode=${conf.get(DeploymentOptions.TARGET)}, clusterId=${
+        conf.get(
+          KubernetesConfigOptions.CLUSTER_ID)
+      }, " +
       s"namespace=${conf.get(KubernetesConfigOptions.NAMESPACE)}"
 
   private def covertToServiceExposedType(exposedType: FlinkK8sRestExposedType): ServiceExposedType =

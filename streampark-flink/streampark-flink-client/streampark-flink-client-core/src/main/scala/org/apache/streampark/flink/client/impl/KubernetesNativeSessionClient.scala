@@ -21,6 +21,7 @@ import org.apache.streampark.common.enums.FlinkDeployMode
 import org.apache.streampark.common.util.{Logger, Utils}
 import org.apache.streampark.common.util.Implicits._
 import org.apache.streampark.flink.client.`trait`.KubernetesNativeClientTrait
+import org.apache.streampark.flink.client.K8sIngressClusterHelper
 import org.apache.streampark.flink.client.bean._
 import org.apache.streampark.flink.client.tool.FlinkSessionSubmitHelper
 import org.apache.streampark.flink.core.FlinkKubernetesClient
@@ -48,8 +49,10 @@ object KubernetesNativeSessionClient extends KubernetesNativeClientTrait with Lo
     // require parameters
     require(
       StringUtils.isNotBlank(submitRequest.clusterId),
-      s"[flink-submit] submit flink job failed, clusterId is null, mode=${flinkConfig
-          .get(DeploymentOptions.TARGET)}")
+      s"[flink-submit] submit flink job failed, clusterId is null, mode=${
+          flinkConfig
+            .get(DeploymentOptions.TARGET)
+        }")
     super.trySubmit(submitRequest, flinkConfig, submitRequest.userJarFile)(
       jobGraphSubmit,
       restApiSubmit)
@@ -132,17 +135,15 @@ object KubernetesNativeSessionClient extends KubernetesNativeClientTrait with Lo
 
     val flinkConfig = getFlinkK8sConfig(deployRequest)
     val kubeClient = FlinkKubeClientFactory.getInstance.fromConfiguration(flinkConfig, "client")
-
+    val k8sClient = K8sIngressClusterHelper.createK8sClient(flinkConfig)
     var clusterDescriptor: KubernetesClusterDescriptor = null
     var client: ClusterClient[String] = null
 
     try {
-      val kubernetesClusterDescriptor = getK8sClusterDescriptorAndSpecification(flinkConfig)
+      val kubernetesClusterDescriptor = getK8sIngressClusterDescriptorAndSpecification(flinkConfig)
       clusterDescriptor = kubernetesClusterDescriptor._1
-
       val kubeClientWrapper = new FlinkKubernetesClient(kubeClient)
       val kubeService = kubeClientWrapper.getService(deployRequest.clusterId)
-
       if (kubeService.isPresent) {
         client = clusterDescriptor.retrieve(deployRequest.clusterId).getClusterClient
       } else {
@@ -150,11 +151,15 @@ object KubernetesNativeSessionClient extends KubernetesNativeClientTrait with Lo
           .deploySessionCluster(kubernetesClusterDescriptor._2)
           .getClusterClient
       }
-      DeployResponse(address = client.getWebInterfaceURL, clusterId = client.getClusterId)
+      var webInterfaceURL = K8sIngressClusterHelper.getOrCreateIngress(deployRequest.clusterId, k8sClient, flinkConfig)
+      if (StringUtils.isBlank(webInterfaceURL)) {
+        webInterfaceURL = client.getWebInterfaceURL
+      }
+      DeployResponse(webInterfaceURL, clusterId = client.getClusterId)
     } catch {
       case e: Exception => DeployResponse(error = e)
     } finally {
-      Utils.close(client, clusterDescriptor, kubeClient)
+      Utils.close(client, clusterDescriptor, kubeClient, k8sClient)
     }
   }
 

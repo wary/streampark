@@ -85,10 +85,10 @@ object FlinkConfigurationUtils extends Logger {
           if (key.nonEmpty && value.nonEmpty) {
             flinkConf += key -> value
           } else {
-            logWarn(s"Error after splitting key and value in configuration ${lineNo.get()}: $line")
+            logDebug(s"Error after splitting key and value in configuration ${lineNo.get()}: $line")
           }
         } else {
-          logWarn(s"Error while trying to split key and value in configuration. $lineNo : $line")
+          logDebug(s"Error while trying to split key and value in configuration. $lineNo : $line")
         }
       }
     }

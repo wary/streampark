@@ -199,6 +199,8 @@ public class FlinkClusterWatcher {
                 return httpRemoteClusterState(flinkCluster);
             case YARN_SESSION:
                 return httpYarnSessionClusterState(flinkCluster);
+            case KUBERNETES_NATIVE_SESSION:
+                return httpRemoteClusterState(flinkCluster);
             default:
                 return ClusterState.UNKNOWN;
         }

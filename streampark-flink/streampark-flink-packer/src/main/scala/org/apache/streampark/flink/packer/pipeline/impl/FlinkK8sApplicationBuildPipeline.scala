@@ -177,6 +177,7 @@ class FlinkK8sApplicationBuildPipeline(request: FlinkK8sApplicationBuildRequest)
         dockerClient =>
           val buildImageCmd = dockerClient
             .buildImageCmd()
+            .withPlatform("linux/amd64")
             .withBaseDirectory(new File(buildWorkspace))
             .withDockerfile(dockerfile)
             .withTags(Sets.newHashSet(pushImageTag))
