@@ -18,7 +18,7 @@
 package org.apache.streampark.flink.client.`trait`
 
 import org.apache.streampark.common.enums.{FlinkDeployMode, FlinkK8sRestExposedType}
-import org.apache.streampark.flink.client.{K8sIngressClusterDescriptor, K8sIngressClusterHelper}
+import org.apache.streampark.flink.client.K8sIngressClusterClientFactory
 import org.apache.streampark.flink.client.bean._
 import org.apache.streampark.flink.kubernetes.PodTemplateTool
 import org.apache.streampark.flink.packer.pipeline.DockerImageBuildResponse
@@ -28,11 +28,9 @@ import org.apache.flink.api.common.JobID
 import org.apache.flink.client.deployment.ClusterSpecification
 import org.apache.flink.client.program.ClusterClient
 import org.apache.flink.configuration._
-import org.apache.flink.kubernetes.{KubernetesClusterClientFactory, KubernetesClusterDescriptor}
-import org.apache.flink.kubernetes.artifact.DefaultKubernetesArtifactUploader
+import org.apache.flink.kubernetes.KubernetesClusterDescriptor
 import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions
 import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions.ServiceExposedType
-import org.apache.flink.kubernetes.kubeclient.FlinkKubeClientFactory
 
 import javax.annotation.Nonnull
 
@@ -112,11 +110,10 @@ trait KubernetesNativeClientTrait extends FlinkClientTrait {
       .safeSet(KubernetesConfigOptions.CLUSTER_ID, request.clusterId)
       .safeSet(KubernetesConfigOptions.NAMESPACE, request.kubernetesNamespace)
 
-    var clusterDescriptor: K8sIngressClusterDescriptor = null
+    var clusterDescriptor: KubernetesClusterDescriptor = null
     var client: ClusterClient[String] = null
-    val k8sClient = K8sIngressClusterHelper.createK8sClient(flinkConfig)
     try {
-      clusterDescriptor = getK8sIngressClusterDescriptor(flinkConfig)
+      clusterDescriptor = getK8sClusterDescriptor(flinkConfig)
       client = clusterDescriptor
         .retrieve(flinkConfig.getString(KubernetesConfigOptions.CLUSTER_ID))
         .getClusterClient
@@ -126,7 +123,6 @@ trait KubernetesNativeClientTrait extends FlinkClientTrait {
         logger.error(s"$hints mode=${flinkConfig.get(DeploymentOptions.TARGET)}, request=$request")
         throw e
     } finally {
-      if (k8sClient != null) k8sClient.close()
       if (client != null) client.close()
       if (clusterDescriptor != null) clusterDescriptor.close()
     }
@@ -146,45 +142,17 @@ trait KubernetesNativeClientTrait extends FlinkClientTrait {
       })
   }
 
-  // noinspection DuplicatedCode
-  /*
-    tips:
-    The default kubernetes cluster communication information will be obtained from ./kube/conf file.
-
-    If you need to customize the kubernetes cluster context, such as multiple target kubernetes clusters
-    or multiple kubernetes api-server accounts, there are two ways to achieve this:
-     1. Get the KubernetesClusterDescriptor by manually, building the FlinkKubeClient and specify
-         the kubernetes context contents in the FlinkKubeClient.
-     2. Specify an explicit key kubernetes.config.file in flinkConfig instead of the default value.
-   */
   def getK8sClusterDescriptorAndSpecification(
       flinkConfig: Configuration): (KubernetesClusterDescriptor, ClusterSpecification) = {
-    val clientFactory = new KubernetesClusterClientFactory()
+    val clientFactory = new K8sIngressClusterClientFactory()
     val clusterDescriptor = clientFactory.createClusterDescriptor(flinkConfig)
-    val clusterSpecification =
-      clientFactory.getClusterSpecification(flinkConfig)
+    val clusterSpecification = clientFactory.getClusterSpecification(flinkConfig)
     (clusterDescriptor, clusterSpecification)
   }
 
   def getK8sClusterDescriptor(flinkConfig: Configuration): KubernetesClusterDescriptor = {
-    val clientFactory = new KubernetesClusterClientFactory()
+    val clientFactory = new K8sIngressClusterClientFactory()
     clientFactory.createClusterDescriptor(flinkConfig)
-  }
-
-  def getK8sIngressClusterDescriptorAndSpecification(
-      flinkConfig: Configuration): (KubernetesClusterDescriptor, ClusterSpecification) = {
-    val clientFactory = new KubernetesClusterClientFactory()
-    val clusterDescriptor = this.getK8sIngressClusterDescriptor(flinkConfig)
-    val clusterSpecification =
-      clientFactory.getClusterSpecification(flinkConfig)
-    (clusterDescriptor, clusterSpecification)
-  }
-
-  def getK8sIngressClusterDescriptor(flinkConfig: Configuration): K8sIngressClusterDescriptor = {
-    new K8sIngressClusterDescriptor(
-      flinkConfig,
-      FlinkKubeClientFactory.getInstance,
-      new DefaultKubernetesArtifactUploader)
   }
 
   protected def flinkConfIdentifierInfo(@Nonnull conf: Configuration): String =

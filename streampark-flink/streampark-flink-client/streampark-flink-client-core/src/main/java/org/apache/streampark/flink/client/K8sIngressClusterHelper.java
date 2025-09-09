@@ -55,6 +55,8 @@ import java.util.stream.Collectors;
 
 public class K8sIngressClusterHelper {
 
+    public static String KUBERNETES_INGRESS_PROXY = "kubernetes.ingress.proxy";
+
     public static KubernetesClient createK8sClient(Configuration flinkConfig) {
         return FlinkKubeClientFactory.getInstance().createFabric8ioKubernetesClient(flinkConfig);
     }
@@ -63,7 +65,7 @@ public class K8sIngressClusterHelper {
         Ingress ingress = getIngress(clusterId, client, flinkConfig);
         if (ingress == null) {
             String proxy =
-                flinkConfig.getString("kubernetes.ingress.proxy", "").replaceAll("\\{clusterId\\}", clusterId);
+                flinkConfig.getString(KUBERNETES_INGRESS_PROXY, "").replaceAll("\\{clusterId\\}", clusterId);
             if (StringUtils.isNotBlank(proxy)) {
                 ingress = new Ingress();
                 ObjectMeta metaData = new ObjectMeta();

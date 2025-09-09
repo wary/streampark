@@ -140,7 +140,7 @@ object KubernetesNativeSessionClient extends KubernetesNativeClientTrait with Lo
     var client: ClusterClient[String] = null
 
     try {
-      val kubernetesClusterDescriptor = getK8sIngressClusterDescriptorAndSpecification(flinkConfig)
+      val kubernetesClusterDescriptor = getK8sClusterDescriptorAndSpecification(flinkConfig)
       clusterDescriptor = kubernetesClusterDescriptor._1
       val kubeClientWrapper = new FlinkKubernetesClient(kubeClient)
       val kubeService = kubeClientWrapper.getService(deployRequest.clusterId)

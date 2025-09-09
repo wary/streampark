@@ -769,6 +769,7 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         }
 
         application.setYarnQueueByHotParams();
+        application.setAppControl(this.getAppControl(application));
 
         return application;
     }

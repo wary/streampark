@@ -118,7 +118,8 @@
 
   /* Flink Web UI */
   function handleFlinkView() {
-    handleView(app as any);
+    //handleView(app as any);
+    window.open(app.jobManagerUrl);
   }
 
   const { pause } = useIntervalFn(

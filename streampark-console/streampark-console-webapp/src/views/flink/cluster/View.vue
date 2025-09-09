@@ -192,11 +192,12 @@
         </template>
         <template v-if="column.dataIndex === 'address'">
           <a
-            :href="`/proxy/flink_cluster/${record.id}/`"
+            :href="`${record.address}`"
             target="_blank"
             v-if="
               record.deployMode === DeployMode.STANDALONE ||
-              record.deployMode === DeployMode.YARN_SESSION
+              record.deployMode === DeployMode.YARN_SESSION ||
+              record.deployMode === DeployMode.KUBERNETES_SESSION
             "
           >
             {{ record.address }}
@@ -240,7 +241,8 @@
                 auth: 'app:detail',
                 disabled: !handleIsStart(record),
                 tooltip: t('setting.flinkCluster.detail'),
-                href: `/proxy/flink_cluster/${record.id}/`,
+                //href: `/proxy/flink_cluster/${record.id}/`,
+                href: `${record.address}`,
                 target: '_blank',
               },
               {

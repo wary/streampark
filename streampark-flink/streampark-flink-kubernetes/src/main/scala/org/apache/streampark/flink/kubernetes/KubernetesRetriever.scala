@@ -24,11 +24,11 @@ import org.apache.streampark.flink.kubernetes.ingress.IngressController
 import org.apache.streampark.flink.kubernetes.model.ClusterKey
 
 import org.apache.flink.client.cli.ClientOptions
-import org.apache.flink.client.deployment.DefaultClusterClientServiceLoader
 import org.apache.flink.client.program.ClusterClient
 import org.apache.flink.configuration.{Configuration, DeploymentOptions, RestOptions}
 import org.apache.flink.kubernetes.KubernetesClusterDescriptor
 import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions
+import org.apache.flink.kubernetes.kubeclient.deployment.UdClusterClientServiceLoader
 import org.apache.flink.kubernetes.shaded.io.fabric8.kubernetes.client.{DefaultKubernetesClient, KubernetesClient, KubernetesClientException}
 import org.apache.hc.core5.util.Timeout
 
@@ -60,7 +60,7 @@ object KubernetesRetriever extends Logger {
   }
 
   private val clusterClientServiceLoader =
-    new DefaultClusterClientServiceLoader()
+    new UdClusterClientServiceLoader()
 
   /** get new flink cluster client of kubernetes mode */
   def newFinkClusterClient(
