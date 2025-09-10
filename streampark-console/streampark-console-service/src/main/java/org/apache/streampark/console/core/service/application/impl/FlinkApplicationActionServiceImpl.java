@@ -17,6 +17,38 @@
 
 package org.apache.streampark.console.core.service.application.impl;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.common.collect.Sets;
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.util.Date;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import javax.annotation.Nonnull;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.flink.api.common.JobID;
+import org.apache.flink.configuration.CoreOptions;
+import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.RestOptions;
+import org.apache.flink.kubernetes.shaded.io.fabric8.kubernetes.client.KubernetesClientException;
+import org.apache.flink.runtime.jobgraph.SavepointConfigOptions;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.streampark.common.conf.ConfigKeys;
 import org.apache.streampark.common.conf.Workspace;
 import org.apache.streampark.common.constants.Constants;
@@ -83,54 +115,20 @@ import org.apache.streampark.flink.kubernetes.ingress.IngressController;
 import org.apache.streampark.flink.kubernetes.model.TrackId;
 import org.apache.streampark.flink.packer.pipeline.BuildResult;
 import org.apache.streampark.flink.packer.pipeline.ShadedBuildResponse;
-
-import org.apache.commons.lang3.StringUtils;
-import org.apache.flink.api.common.JobID;
-import org.apache.flink.configuration.CoreOptions;
-import org.apache.flink.configuration.JobManagerOptions;
-import org.apache.flink.configuration.MemorySize;
-import org.apache.flink.configuration.RestOptions;
-import org.apache.flink.kubernetes.shaded.io.fabric8.kubernetes.client.KubernetesClientException;
-import org.apache.flink.runtime.jobgraph.SavepointConfigOptions;
-import org.apache.hadoop.yarn.api.records.ApplicationReport;
-import org.apache.hadoop.yarn.api.records.YarnApplicationState;
-import org.apache.hadoop.yarn.client.api.YarnClient;
-
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.google.common.collect.Sets;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.annotation.Nonnull;
-
-import java.io.File;
-import java.net.URI;
-import java.util.Date;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-
 @Slf4j
 @Service
 @Transactional(propagation = Propagation.SUPPORTS, readOnly = true, rollbackFor = Exception.class)
 public class FlinkApplicationActionServiceImpl
     extends
-        ServiceImpl<FlinkApplicationMapper, FlinkApplication>
+    ServiceImpl<FlinkApplicationMapper, FlinkApplication>
     implements
-        FlinkApplicationActionService {
+    FlinkApplicationActionService {
 
     @Qualifier("streamparkDeployExecutor")
     @Autowired
@@ -507,10 +505,10 @@ public class FlinkApplicationActionServiceImpl
     }
 
     private void processForSuccess(
-                                   FlinkApplication appParam,
-                                   SubmitResponse response,
-                                   ApplicationLog applicationLog,
-                                   FlinkApplication flinkApplication) {
+        FlinkApplication appParam,
+        SubmitResponse response,
+        ApplicationLog applicationLog,
+        FlinkApplication flinkApplication) {
         applicationLog.setSuccess(true);
         if (response.flinkConfig() != null) {
             String jmMemory = response.flinkConfig().get(ConfigKeys.KEY_FLINK_JM_PROCESS_MEMORY());
@@ -575,10 +573,10 @@ public class FlinkApplicationActionServiceImpl
     }
 
     private void processForException(
-                                     FlinkApplication appParam,
-                                     Throwable throwable,
-                                     ApplicationLog applicationLog,
-                                     FlinkApplication application) {
+        FlinkApplication appParam,
+        Throwable throwable,
+        ApplicationLog applicationLog,
+        FlinkApplication application) {
         String exception = ExceptionUtils.stringifyException(throwable);
         applicationLog.setException(exception);
         applicationLog.setSuccess(false);
@@ -631,7 +629,7 @@ public class FlinkApplicationActionServiceImpl
     }
 
     private Tuple2<String, String> getUserJarAndAppConf(
-                                                        FlinkEnv flinkEnv, FlinkApplication application) {
+        FlinkEnv flinkEnv, FlinkApplication application) {
         FlinkDeployMode deployModeEnum = application.getDeployModeEnum();
         FlinkApplicationConfig applicationConfig = configService.getEffective(application.getId());
 
@@ -741,7 +739,7 @@ public class FlinkApplicationActionServiceImpl
     }
 
     private Map<String, Object> getProperties(
-                                              FlinkApplication application, String runtimeProperties) {
+        FlinkApplication application, String runtimeProperties) {
         Map<String, Object> properties = new HashMap<>(application.getOptionMap());
         if (FlinkDeployMode.isRemoteMode(application.getDeployModeEnum())) {
             FlinkCluster cluster = flinkClusterService.getById(application.getFlinkClusterId());
@@ -776,6 +774,17 @@ public class FlinkApplicationActionServiceImpl
             }
         } else if (FlinkDeployMode.isKubernetesMode(application.getDeployModeEnum())) {
             properties.put(ConfigKeys.KEY_K8S_IMAGE_PULL_POLICY(), "Always");
+            String podTemplateKey = "kubernetes.pod-template-file.default";
+            String podTemplateCon = application.getK8sPodTemplate();
+            setPodTemplate(application, podTemplateCon, podTemplateKey, properties);
+
+            String jmPodTemplateKey = "kubernetes.pod-template-file.jobmanager";
+            String jmPodTemplateCon = application.getK8sJmPodTemplate();
+            setPodTemplate(application, jmPodTemplateCon, jmPodTemplateKey, properties);
+
+            String tmPodTemplateKey = "kubernetes.pod-template-file.taskmanager";
+            String tmPodTemplateCon = application.getK8sTmPodTemplate();
+            setPodTemplate(application, tmPodTemplateCon, tmPodTemplateKey, properties);
         }
 
         if (FlinkDeployMode.isKubernetesApplicationMode(application.getDeployMode())) {
@@ -793,8 +802,19 @@ public class FlinkApplicationActionServiceImpl
         if (resolveOrder != null) {
             properties.put(CoreOptions.CLASSLOADER_RESOLVE_ORDER.key(), resolveOrder.getName());
         }
-
         return properties;
+    }
+
+    private static void setPodTemplate(FlinkApplication application, String template, String key, Map<String, Object> properties) {
+        if (StringUtils.isNotBlank(template)) {
+            File podTemplate = new File(application.getLocalAppHome() + "/" + key);
+            try {
+                FileUtils.write(podTemplate, application.getK8sPodTemplate());
+                properties.put("kubernetes.pod-template-file.default", podTemplate.getAbsolutePath());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     private void doAbort(Long id) {
@@ -857,7 +877,7 @@ public class FlinkApplicationActionServiceImpl
     }
 
     private Tuple3<String, String, FlinkK8sRestExposedType> getNamespaceClusterId(
-                                                                                  FlinkApplication application) {
+        FlinkApplication application) {
         String clusterId = null;
         String k8sNamespace = null;
         FlinkK8sRestExposedType exposedType = null;
