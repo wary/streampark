@@ -30,6 +30,8 @@ import org.apache.streampark.console.core.mapper.FlinkApplicationConfigMapper;
 import org.apache.streampark.console.core.service.FlinkEffectiveService;
 import org.apache.streampark.console.core.service.application.FlinkApplicationConfigService;
 
+import org.apache.commons.io.IOUtils;
+
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -44,7 +46,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
-import java.util.Scanner;
 
 @Slf4j
 @Service
@@ -56,6 +57,8 @@ public class FlinkApplicationConfigServiceImpl
         FlinkApplicationConfigService {
 
     private String flinkConfTemplate = null;
+
+    private String flinkPodTemplate = null;
 
     @Autowired
     private ResourceLoader resourceLoader;
@@ -235,21 +238,30 @@ public class FlinkApplicationConfigServiceImpl
     @Override
     public synchronized String readTemplate() {
         if (flinkConfTemplate == null) {
-            Resource resource = resourceLoader.getResource("classpath:flink-application.conf");
-            try (Scanner scanner = new Scanner(resource.getInputStream())) {
-                StringBuilder stringBuffer = new StringBuilder();
-                while (scanner.hasNextLine()) {
-                    stringBuffer.append(scanner.nextLine()).append(System.lineSeparator());
-                }
-                scanner.close();
-                String template = stringBuffer.toString();
-                this.flinkConfTemplate = Base64.getEncoder().encodeToString(template.getBytes());
+            Resource resource = resourceLoader.getResource("classpath:flink-application.yaml");
+            try {
+                this.flinkConfTemplate =
+                    Base64.getEncoder().encodeToString(IOUtils.toByteArray(resource.getInputStream()));
             } catch (Exception e) {
-                log.error("Read conf/flink-application.conf failed, please check your deployment");
+                log.error("Read conf/flink-application.yaml failed, please check your deployment");
                 log.error(e.getMessage(), e);
             }
         }
         return this.flinkConfTemplate;
+    }
+
+    @Override
+    public synchronized String readPodTemplate() {
+        if (flinkPodTemplate == null) {
+            Resource resource = resourceLoader.getResource("classpath:flink-pod-template.yaml");
+            try {
+                this.flinkPodTemplate = IOUtils.toString(resource.getInputStream());
+            } catch (Exception e) {
+                log.error("Read conf/flink-pod-template.yaml failed, please check your deployment");
+                log.error(e.getMessage(), e);
+            }
+        }
+        return this.flinkPodTemplate;
     }
 
     @Override

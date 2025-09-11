@@ -40,14 +40,14 @@ flink:
       jvm-metaspace.size:
       jvm-overhead.max:
       jvm-overhead.min:
-      managed.fraction: 0.4
+      managed.fraction: 0.01
     pipeline:
       auto-watermark-interval: 200ms
     # checkpoint
     execution:
       checkpointing:
         mode: EXACTLY_ONCE
-        interval: 30s
+        interval: 60s
         timeout: 10min
         unaligned: false
         externalized-checkpoint-retention: RETAIN_ON_CANCELLATION

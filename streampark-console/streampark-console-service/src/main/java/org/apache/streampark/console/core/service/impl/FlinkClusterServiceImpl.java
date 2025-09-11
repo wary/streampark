@@ -30,6 +30,7 @@ import org.apache.streampark.console.core.mapper.FlinkClusterMapper;
 import org.apache.streampark.console.core.service.FlinkClusterService;
 import org.apache.streampark.console.core.service.FlinkEnvService;
 import org.apache.streampark.console.core.service.YarnQueueService;
+import org.apache.streampark.console.core.service.application.FlinkApplicationConfigService;
 import org.apache.streampark.console.core.service.application.FlinkApplicationInfoService;
 import org.apache.streampark.console.core.watcher.FlinkClusterWatcher;
 import org.apache.streampark.flink.client.FlinkClient;
@@ -39,6 +40,7 @@ import org.apache.streampark.flink.client.bean.KubernetesDeployParam;
 import org.apache.streampark.flink.client.bean.ShutDownRequest;
 import org.apache.streampark.flink.client.bean.ShutDownResponse;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -57,15 +59,22 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+
+import static org.apache.streampark.common.enums.FlinkDeployMode.KUBERNETES_NATIVE_SESSION;
 
 @Slf4j
 @Service
@@ -86,6 +95,9 @@ public class FlinkClusterServiceImpl extends ServiceImpl<FlinkClusterMapper, Fli
 
     @Autowired
     private FlinkApplicationInfoService applicationInfoService;
+
+    @Autowired
+    private FlinkApplicationConfigService configService;
 
     @Autowired
     private YarnQueueService yarnQueueService;
@@ -395,12 +407,10 @@ public class FlinkClusterServiceImpl extends ServiceImpl<FlinkClusterMapper, Fli
     }
 
     /**
-     * Judge the execution mode whether is the Yarn session mode with not default or empty queue
-     * label.
+     * Judge the execution mode whether is the Yarn session mode with not default or empty queue label.
      *
      * @param cluster cluster.
-     * @return If the deployMode is yarn session mode and the queue label is not (empty or
-     *     default), return true, false else.
+     * @return If the deployMode is yarn session mode and the queue label is not (empty or default), return true, false else.
      */
     private boolean isYarnNotDefaultQueue(FlinkCluster cluster) {
         return FlinkDeployMode.isYarnSessionMode(cluster.getFlinkDeployModeEnum())
@@ -421,10 +431,25 @@ public class FlinkClusterServiceImpl extends ServiceImpl<FlinkClusterMapper, Fli
     }
 
     private DeployResponse deployInternal(FlinkCluster flinkCluster) throws InterruptedException, ExecutionException, TimeoutException {
+
+        Map<String, Object> properties = flinkCluster.getProperties();
+        if (flinkCluster.getFlinkDeployModeEnum() == KUBERNETES_NATIVE_SESSION) {
+            String podTemplate = configService.readPodTemplate();
+            File file = new File("/tmp/" + UUID.randomUUID());
+            try {
+                IOUtils.write(podTemplate, new FileOutputStream(file, false));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            } finally {
+                file.deleteOnExit();
+            }
+            properties.put("kubernetes.pod-template-file.default", file.getAbsolutePath());
+        }
+
         DeployRequest deployRequest = new DeployRequest(
             flinkEnvService.getById(flinkCluster.getVersionId()).getFlinkVersion(),
             flinkCluster.getFlinkDeployModeEnum(),
-            flinkCluster.getProperties(),
+            properties,
             flinkCluster.getClusterId(),
             flinkCluster.getId(),
             getKubernetesDeployDesc(flinkCluster, "start"));
