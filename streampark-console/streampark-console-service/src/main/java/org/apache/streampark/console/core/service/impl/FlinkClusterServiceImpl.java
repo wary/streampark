@@ -190,10 +190,11 @@ public class FlinkClusterServiceImpl extends ServiceImpl<FlinkClusterMapper, Fli
                 flinkCluster.setAddress(address);
                 flinkCluster.setJobManagerUrl(deployResponse.address());
             } else {
+                flinkCluster.setJobManagerUrl(deployResponse.address());
                 flinkCluster.setAddress(deployResponse.address());
             }
             flinkCluster.setClusterId(deployResponse.clusterId());
-            flinkCluster.setClusterState(ClusterState.RUNNING.getState());
+            flinkCluster.setClusterState(ClusterState.STARTING.getState());
             flinkCluster.setException(null);
             flinkCluster.setEndTime(null);
             updateById(flinkCluster);

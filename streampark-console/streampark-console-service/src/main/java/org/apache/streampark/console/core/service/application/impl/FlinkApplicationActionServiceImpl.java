@@ -127,6 +127,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
+import static org.apache.streampark.common.enums.FlinkDeployMode.KUBERNETES_NATIVE_APPLICATION;
+
 @Slf4j
 @Service
 @Transactional(propagation = Propagation.SUPPORTS, readOnly = true, rollbackFor = Exception.class)
@@ -778,7 +780,7 @@ public class FlinkApplicationActionServiceImpl
                 Optional.ofNullable(yarnLabelExpr)
                     .ifPresent(yLabel -> properties.put(ConfigKeys.KEY_YARN_APP_NODE_LABEL(), yLabel));
             }
-        } else if (FlinkDeployMode.isKubernetesMode(application.getDeployModeEnum())) {
+        } else if (KUBERNETES_NATIVE_APPLICATION == application.getDeployModeEnum()) {
             properties.put(ConfigKeys.KEY_K8S_IMAGE_PULL_POLICY(), "Always");
             String podTemplateKey = "kubernetes.pod-template-file.default";
             StringWriter stringWriter = new StringWriter();
@@ -794,7 +796,6 @@ public class FlinkApplicationActionServiceImpl
                     // pass
                 }
             }
-
             String jmPodTemplateKey = "kubernetes.pod-template-file.jobmanager";
             String jmPodTemplateCon = application.getK8sJmPodTemplate();
             setPodTemplate(application, jmPodTemplateCon, jmPodTemplateKey, properties);

@@ -20,7 +20,6 @@ package org.apache.streampark.console.core.watcher;
 import org.apache.streampark.common.conf.CommonConfig;
 import org.apache.streampark.common.conf.InternalConfigHolder;
 import org.apache.streampark.common.enums.ClusterState;
-import org.apache.streampark.common.enums.FlinkDeployMode;
 import org.apache.streampark.common.util.HadoopUtils;
 import org.apache.streampark.common.util.HttpClientUtils;
 import org.apache.streampark.common.util.YarnUtils;
@@ -97,9 +96,10 @@ public class FlinkClusterWatcher {
         List<FlinkCluster> flinkClusters =
             flinkClusterService.list(
                 new LambdaQueryWrapper<FlinkCluster>()
-                    .eq(FlinkCluster::getClusterState, ClusterState.RUNNING.getState())
-                    // excluding flink clusters on kubernetes
-                    .notIn(FlinkCluster::getDeployMode, FlinkDeployMode.getKubernetesMode()));
+                    .in(FlinkCluster::getClusterState, ClusterState.RUNNING.getState(),
+                        ClusterState.STARTING.getState()));
+        // excluding flink clusters on kubernetes
+        // .notIn(FlinkCluster::getDeployMode, FlinkDeployMode.getKubernetesMode()));
         flinkClusters.forEach(cluster -> WATCHER_CLUSTERS.put(cluster.getId(), cluster));
     }
 
@@ -118,15 +118,21 @@ public class FlinkClusterWatcher {
                             case LOST:
                             case UNKNOWN:
                             case KILLED:
-                                flinkClusterService.updateClusterState(flinkCluster.getId(), state);
+                                updateClusterState(flinkCluster, state);
                                 unWatching(flinkCluster);
                                 alert(flinkCluster, state);
                                 break;
                             default:
+                                updateClusterState(flinkCluster, state);
                                 break;
                         }
                     }));
         }
+    }
+
+    private void updateClusterState(FlinkCluster flinkCluster, ClusterState state) {
+        flinkCluster.setClusterState(state.getState());
+        flinkClusterService.updateClusterState(flinkCluster.getId(), state);
     }
 
     private void alert(FlinkCluster cluster, ClusterState state) {
@@ -227,6 +233,10 @@ public class FlinkClusterWatcher {
             JacksonUtils.read(res, Overview.class);
             return ClusterState.RUNNING;
         } catch (Exception ignored) {
+            if (flinkCluster.equals(ClusterState.STARTING.getState())
+                && (System.currentTimeMillis() - flinkCluster.getStartTime().getTime()) <= 5 * 60 * 1000) {
+                return ClusterState.STARTING;
+            }
             log.error("cluster id:{} get state from flink api failed", flinkCluster.getId());
         }
         return ClusterState.LOST;
@@ -265,8 +275,7 @@ public class FlinkClusterWatcher {
      * @param flinkCluster
      */
     public static void addWatching(FlinkCluster flinkCluster) {
-        if (!FlinkDeployMode.isKubernetesMode(flinkCluster.getFlinkDeployModeEnum())
-            && !WATCHER_CLUSTERS.containsKey(flinkCluster.getId())) {
+        if (!WATCHER_CLUSTERS.containsKey(flinkCluster.getId())) {
             log.info("add the cluster with id:{} to watcher cluster cache", flinkCluster.getId());
             WATCHER_CLUSTERS.put(flinkCluster.getId(), flinkCluster);
         }
