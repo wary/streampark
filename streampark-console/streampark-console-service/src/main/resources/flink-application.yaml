@@ -20,24 +20,22 @@ flink:
     $internal.application.main:
     pipeline.name:
     yarn.application.queue:
-    taskmanager.numberOfTaskSlots: 1
+    taskmanager.numberOfTaskSlots: 2
     parallelism.default: 2
     jobmanager.memory:
-      flink.size:
-      heap.size:
-      jvm-metaspace.size:
-      jvm-overhead.max:
-      off-heap.size:
-      process.size:
+      jvm-metaspace.size: 256m
+      jvm-overhead.max: 512m
+      off-heap.size: 1m
+      process.size: 2048m
     taskmanager.memory:
       flink.size:
       framework.heap.size:
       framework.off-heap.size:
       managed.size:
-      process.size:
+      process.size: 2048m
       task.heap.size:
       task.off-heap.size:
-      jvm-metaspace.size:
+      jvm-metaspace.size: 256m
       jvm-overhead.max:
       jvm-overhead.min:
       managed.fraction: 0.01

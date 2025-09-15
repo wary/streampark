@@ -97,7 +97,7 @@ class DefaultFlinkK8sWatcher(conf: FlinkTrackConfig = FlinkTrackConfig.defaultCo
     watchController.getAllWatchingIds()
 
   override def checkIsInRemoteCluster(trackId: TrackId): Boolean = {
-    if (!trackId.isLegal) false;
+    if (!trackId.isLegal) false
     else {
       val nonLost = (state: FlinkJobState.Value) =>
         state != FlinkJobState.LOST || state != FlinkJobState.SILENT

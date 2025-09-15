@@ -120,23 +120,16 @@ class FlinkJobStatusWatcher(conf: JobStatusWatcherConfig = JobStatusWatcherConfi
       val sessionFuture = sessionCluster.map {
         trackId =>
           val future = Future(touchSessionAllJob(trackId))
-          future.onComplete(_.toOption match {
-            case Some(map) =>
-              map.find(_._1.jobId == trackId.jobId) match {
-                case Some(job) =>
-                  updateState(job._1.copy(appId = trackId.appId), job._2)
-                case _ =>
-                  touchSessionJob(trackId) match {
-                    case Some(state) =>
-                      if (FlinkJobState.isEndState(state.jobState)) {
-                        // can't find that job in the k8s cluster.
-                        watchController.unWatching(trackId)
-                      }
-                      eventBus.postSync(FlinkJobStatusChangeEvent(trackId, state))
-                    case _ =>
-                  }
-              }
+          future.onComplete(_.getOrElse(Map.empty).find(_._1.jobId == trackId.jobId) match {
+            case Some(job) =>
+              updateState(job._1.copy(appId = trackId.appId), job._2)
             case _ =>
+              inferState(trackId) match {
+                case Some(state) =>
+                  updateState(trackId, state)
+                case _ =>
+                  logWarn(s"can't refresh for job: $trackId")
+              }
           })
           future
       }
@@ -219,13 +212,14 @@ class FlinkJobStatusWatcher(conf: JobStatusWatcherConfig = JobStatusWatcherConfi
   private[this] def updateState(trackId: TrackId, jobState: JobStatusCV): Unit = {
     val latest: JobStatusCV = watchController.jobStatuses.get(trackId)
     if (jobState.diff(latest)) {
-      // put job status to cache
-      watchController.jobStatuses.put(trackId, jobState)
       // set jobId to trackIds
       watchController.trackIds.update(trackId)
-
       eventBus.postSync(FlinkJobStatusChangeEvent(trackId, jobState))
+      logInfo(s"update state to $jobState with trackId $trackId")
     }
+
+    // put job status to cache, to make sure not expired
+    watchController.jobStatuses.put(trackId, jobState)
 
     if (FlinkJobState.isEndState(jobState.jobState)) {
       trackId.executeMode match {
@@ -263,6 +257,7 @@ class FlinkJobStatusWatcher(conf: JobStatusWatcherConfig = JobStatusWatcherConfi
         pollEmitTime = pollEmitTime,
         pollAckTime = System.currentTimeMillis)
     }
+    logInfo(s"inferState: $jobState for trackId: $id")
     Option(jobState)
   }
 
@@ -365,13 +360,19 @@ class FlinkJobStatusWatcher(conf: JobStatusWatcherConfig = JobStatusWatcherConfi
   }
 
   private[this] def inferFromPreCache(preCache: JobStatusCV) = preCache match {
-    case preCache if preCache == null => FlinkJobState.SILENT
+    case preCache if preCache == null =>
+      logInfo(
+        s"preCache: NULL Set to SILENT")
+      FlinkJobState.SILENT
     case preCache
-        if preCache.jobState == FlinkJobState.SILENT &&
-          System
-            .currentTimeMillis() - preCache.pollAckTime >= conf.silentStateJobKeepTrackingSec * 1000 =>
+        if preCache.jobState == FlinkJobState.SILENT && System.currentTimeMillis() - preCache.pollAckTime >= conf.silentStateJobKeepTrackingSec * 1000 =>
+      logInfo(
+        s"preCache: ${preCache.jobId} ${preCache.jobName} LOST, ${preCache.pollAckTime}, ${System.currentTimeMillis() - preCache.pollAckTime}, ${conf.silentStateJobKeepTrackingSec * 1000}")
       FlinkJobState.LOST
-    case _ => FlinkJobState.SILENT
+    case _ =>
+      logInfo(
+        s"preCache: ${preCache.jobId} ${preCache.jobName} ${preCache.jobState}, ${preCache.pollAckTime}, ${System.currentTimeMillis() - preCache.pollAckTime}, ${conf.silentStateJobKeepTrackingSec * 1000}")
+      FlinkJobState.SILENT
   }
 
 }
@@ -382,9 +383,9 @@ object FlinkJobStatusWatcher {
    * infer flink job state before persistence.
    *
    * @param current
-   *   current flink job state
+   * current flink job state
    * @param previous
-   *   previous flink job state from persistent storage
+   * previous flink job state from persistent storage
    */
   def inferFlinkJobStateFromPersist(
       current: FlinkJobState.Value,

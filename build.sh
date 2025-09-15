@@ -170,6 +170,7 @@ print_logo() {
 }
 
 build() {
+  mvn spotless:apply
   if [[ -x "$PRG_DIR/mvnw" ]]; then
     echo_g "Apache StreamPark, building..."
     "$PRG_DIR/mvnw" -Pshaded,webapp,dist -DskipTests clean install
