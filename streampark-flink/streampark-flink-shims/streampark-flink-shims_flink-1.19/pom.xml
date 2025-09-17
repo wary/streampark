@@ -98,13 +98,19 @@
 
         <dependency>
             <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-client-api</artifactId>
+            <artifactId>hadoop-common</artifactId>
             <optional>true</optional>
         </dependency>
 
         <dependency>
             <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-client-runtime</artifactId>
+            <artifactId>hadoop-hdfs</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
             <optional>true</optional>
         </dependency>
 

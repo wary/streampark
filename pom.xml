@@ -100,7 +100,7 @@
         <spark.version>3.1.2</spark.version>
         <scalikejdbc.version>4.0.0</scalikejdbc.version>
         <hive.version>2.3.4</hive.version>
-        <hadoop.version>3.3.4</hadoop.version>
+        <hadoop.version>2.9.2</hadoop.version>
         <hbase.version>2.1.10</hbase.version>
         <redis.version>3.3.0</redis.version>
         <zoopkeeper.version>3.6.3</zoopkeeper.version>
@@ -347,21 +347,32 @@
 
             <dependency>
                 <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-client-api</artifactId>
+                <artifactId>hadoop-common</artifactId>
                 <version>${hadoop.version}</version>
                 <exclusions>
+                    <exclusion>
+                        <groupId>com.google.protobuf</groupId>
+                        <artifactId>protobuf-java</artifactId>
+                    </exclusion>
                     <exclusion>
                         <groupId>org.xerial.snappy</groupId>
                         <artifactId>snappy-java</artifactId>
                     </exclusion>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-reload4j</artifactId>
+                    </exclusion>
                 </exclusions>
             </dependency>
-
             <dependency>
                 <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-client-runtime</artifactId>
+                <artifactId>hadoop-hdfs</artifactId>
                 <version>${hadoop.version}</version>
                 <exclusions>
+                    <exclusion>
+                        <groupId>com.google.protobuf</groupId>
+                        <artifactId>protobuf-java</artifactId>
+                    </exclusion>
                     <exclusion>
                         <groupId>com.google.code.findbugs</groupId>
                         <artifactId>jsr305</artifactId>
@@ -369,6 +380,33 @@
                     <exclusion>
                         <groupId>org.xerial.snappy</groupId>
                         <artifactId>snappy-java</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-reload4j</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-client</artifactId>
+                <version>${hadoop.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.google.protobuf</groupId>
+                        <artifactId>protobuf-java</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.google.code.findbugs</groupId>
+                        <artifactId>jsr305</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.xerial.snappy</groupId>
+                        <artifactId>snappy-java</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-reload4j</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
