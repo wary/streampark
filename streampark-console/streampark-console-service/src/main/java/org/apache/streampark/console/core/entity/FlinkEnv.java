@@ -166,10 +166,10 @@ public class FlinkEnv implements Serializable {
 
     @JsonIgnore
     public Properties getFlinkConfig() {
-        String flinkYamlString = DeflaterUtils.unzipString(flinkConf);
+        // String flinkYamlString = DeflaterUtils.unzipString(flinkConf);
+        // Map<String, String> config = FlinkConfigurationUtils.loadLegacyFlinkConf(flinkYamlString);
         Properties flinkConfig = new Properties();
-        Map<String, String> config = FlinkConfigurationUtils.loadLegacyFlinkConf(flinkYamlString);
-        flinkConfig.putAll(config);
+        flinkConfig.putAll(convertFlinkYamlAsMap());
         return flinkConfig;
     }
 
