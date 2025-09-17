@@ -113,7 +113,7 @@ object KubernetesDeploymentHelper extends Logger {
           .inNamespace(nameSpace)
           .withName(jobName)
           .getLog
-        Files.asCharSink(file, Charsets.UTF_8).write(log)
+        Files.newWriter(file, Charsets.UTF_8).write(log)
         path
       })
   }
@@ -132,7 +132,7 @@ object KubernetesDeploymentHelper extends Logger {
             .terminated()
             .withPrettyOutput
             .getLog
-          Files.asCharSink(file, Charsets.UTF_8).write(log)
+          Files.newWriter(file, Charsets.UTF_8).write(log)
           path
         }.getOrElse(null))(error => throw error)
   }

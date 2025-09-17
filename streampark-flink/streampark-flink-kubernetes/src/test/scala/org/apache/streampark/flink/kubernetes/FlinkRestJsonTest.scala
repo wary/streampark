@@ -283,7 +283,7 @@ class FlinkRestJsonTest {
                   if (log != null) {
                     val path = KubernetesDeploymentHelper.getJobErrorLog(jobId)
                     val file = new File(path)
-                    Files.asCharSink(file, Charsets.UTF_8).write(log)
+                    Files.newWriter(file, Charsets.UTF_8).write(log)
                     println(" error path: " + path)
                   }
                 case _ =>

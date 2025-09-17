@@ -520,7 +520,7 @@ private[kubernetes] object FlinkHistoryArchives extends Logger {
                       val path =
                         KubernetesDeploymentHelper.getJobErrorLog(trackId.jobId)
                       val file = new File(path)
-                      Files.asCharSink(file, Charsets.UTF_8).write(log)
+                      Files.newWriter(file, Charsets.UTF_8).write(log)
                       logInfo(" error path: " + path)
                     }
                   case _ =>
