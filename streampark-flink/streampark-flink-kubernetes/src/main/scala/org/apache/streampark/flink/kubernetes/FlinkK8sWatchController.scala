@@ -23,6 +23,7 @@ import org.apache.streampark.flink.kubernetes.model._
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 
+import java.time.Duration
 import java.util.Objects
 import java.util.concurrent.TimeUnit
 
@@ -32,7 +33,7 @@ class FlinkK8sWatchController extends Logger with AutoCloseable {
   // cache for tracking identifiers
   lazy val trackIds: TrackIdCache = TrackIdCache.build()
 
-  lazy val canceling: TrackIdCache = TrackIdCache.build()
+  lazy val canceling: TrackIdCache = TrackIdCache.build(Duration.ofMinutes(10))
 
   // cache for flink Job-manager rest url
   lazy val endpoints: EndpointCache = EndpointCache.build()
@@ -67,7 +68,7 @@ class FlinkK8sWatchController extends Logger with AutoCloseable {
   def unWatching(trackId: TrackId): Unit = {
     if (trackId.isLegal) {
       trackIds.invalidate(trackId)
-      canceling.invalidate(trackId)
+      // canceling.invalidate(trackId)
       jobStatuses.invalidate(trackId)
       flinkMetrics.invalidate(ClusterKey.of(trackId))
     }
@@ -125,10 +126,14 @@ case class CacheKey(key: java.lang.Long) extends Serializable {
   }
 }
 
-class TrackIdCache {
+class TrackIdCache(duration: Duration = null) {
 
-  private[this] lazy val cache: Cache[CacheKey, TrackId] =
-    Caffeine.newBuilder.build()
+  private[this] lazy val cache: Cache[CacheKey, TrackId] = duration match {
+    case duration if duration != null =>
+      Caffeine.newBuilder.expireAfterAccess(duration).build()
+    case _ =>
+      Caffeine.newBuilder().build()
+  }
 
   def update(k: TrackId): Unit = {
     val key = CacheKey(k.appId)
@@ -151,8 +156,8 @@ class TrackIdCache {
 }
 
 object TrackIdCache {
-  def build(): TrackIdCache = {
-    new TrackIdCache()
+  def build(duration: Duration = null): TrackIdCache = {
+    new TrackIdCache(duration)
   }
 }
 
