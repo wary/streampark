@@ -67,6 +67,7 @@ class DefaultFlinkK8sWatcher(conf: FlinkTrackConfig = FlinkTrackConfig.defaultCo
 
   def doWatching(trackId: TrackId): Unit = {
     if (trackId.isLegal) {
+      watchController.canceling.invalidate(trackId)
       watchController.trackIds.set(trackId)
     }
   }

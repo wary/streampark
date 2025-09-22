@@ -250,7 +250,7 @@ export const useCreateAndEditSchema = (
         render: ({ model, field }) =>
           renderInputDropdown(model, field, {
             placeholder: t('flink.app.addAppTips.serviceAccountPlaceholder'),
-            options: unref(historyRecord)?.k8sNamespace || [],
+            options: unref(historyRecord)?.serviceAccount || [],
           }),
       },
       {
@@ -601,6 +601,9 @@ export const useCreateAndEditSchema = (
     });
     fetchK8sNamespaces().then((res) => {
       historyRecord.k8sNamespace = res;
+    });
+    fetchServiceAccount().then((res) => {
+      historyRecord.serviceAccount = res;
     });
     fetchSessionClusterIds({ deployMode: DeployMode.KUBERNETES_SESSION }).then((res) => {
       historyRecord.k8sSessionClusterId = res;

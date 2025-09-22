@@ -116,6 +116,7 @@
         serviceAccount: cluster.serviceAccount,
         k8sConf: cluster.k8sConf,
         k8sNamespace: cluster.k8sNamespace,
+        serviceAccount: cluster.serviceAccount,
         ...resetParams,
       });
     });

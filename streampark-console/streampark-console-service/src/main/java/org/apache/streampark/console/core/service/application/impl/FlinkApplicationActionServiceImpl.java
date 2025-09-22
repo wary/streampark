@@ -683,7 +683,7 @@ public class FlinkApplicationActionServiceImpl
                 break;
 
             case FLINK_JAR:
-                if (application.isUploadResource()) {
+                if (application.isUploadResource() || application.isImageResource()) {
                     appConf =
                         String.format(
                             "json://{\"%s\":\"%s\"}",
@@ -781,6 +781,7 @@ public class FlinkApplicationActionServiceImpl
                     .ifPresent(yLabel -> properties.put(ConfigKeys.KEY_YARN_APP_NODE_LABEL(), yLabel));
             }
         } else if (KUBERNETES_NATIVE_APPLICATION == application.getDeployModeEnum()) {
+            properties.putAll(application.getHotParamsMap());
             properties.put(ConfigKeys.KEY_K8S_IMAGE_PULL_POLICY(), "Always");
             String podTemplateKey = "kubernetes.pod-template-file.default";
             StringWriter stringWriter = new StringWriter();

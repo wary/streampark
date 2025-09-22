@@ -241,45 +241,47 @@ public class FlinkApplicationBuildPipelineServiceImpl
                         String appHome = app.getAppHome();
                         FsOperator fsOperator = app.getFsOperator();
                         fsOperator.delete(appHome);
-                        if (app.isUploadResource()) {
-                            String uploadJar = appUploads.concat("/").concat(app.getJar());
-                            File localJar = new File(
-                                String.format(
-                                    "%s/%d/%s",
-                                    Workspace.local().APP_UPLOADS(),
-                                    app.getTeamId(),
-                                    app.getJar()));
-                            if (!localJar.exists()) {
-                                Resource resource = resourceService.findByResourceName(app.getTeamId(),
-                                    app.getJar());
-                                if (resource != null && StringUtils.isNotBlank(resource.getFilePath())) {
-                                    localJar = new File(resource.getFilePath());
-                                    uploadJar = appUploads.concat("/").concat(localJar.getName());
-                                } else {
-                                    localJar =
-                                        new File(WebUtils.getAppTempDir(), app.getJar());
-                                    uploadJar = appUploads.concat("/").concat(localJar.getName());
+                        if (!app.isImageResource()) {
+                            if (app.isUploadResource()) {
+                                String uploadJar = appUploads.concat("/").concat(app.getJar());
+                                File localJar = new File(
+                                    String.format(
+                                        "%s/%d/%s",
+                                        Workspace.local().APP_UPLOADS(),
+                                        app.getTeamId(),
+                                        app.getJar()));
+                                if (!localJar.exists()) {
+                                    Resource resource = resourceService.findByResourceName(app.getTeamId(),
+                                        app.getJar());
+                                    if (resource != null && StringUtils.isNotBlank(resource.getFilePath())) {
+                                        localJar = new File(resource.getFilePath());
+                                        uploadJar = appUploads.concat("/").concat(localJar.getName());
+                                    } else {
+                                        localJar =
+                                            new File(WebUtils.getAppTempDir(), app.getJar());
+                                        uploadJar = appUploads.concat("/").concat(localJar.getName());
+                                    }
                                 }
-                            }
-                            // upload jar copy to appHome
-                            checkOrElseUploadJar(app.getFsOperator(), localJar, uploadJar, appUploads);
+                                // upload jar copy to appHome
+                                checkOrElseUploadJar(app.getFsOperator(), localJar, uploadJar, appUploads);
 
-                            switch (app.getApplicationType()) {
-                                case STREAMPARK_FLINK:
-                                    fsOperator.mkdirs(app.getAppLib());
-                                    fsOperator.copy(uploadJar, app.getAppLib(), false, true);
-                                    break;
-                                case APACHE_FLINK:
-                                    fsOperator.mkdirs(appHome);
-                                    fsOperator.copy(uploadJar, appHome, false, true);
-                                    break;
-                                default:
-                                    throw new IllegalArgumentException(
-                                        "[StreamPark] unsupported ApplicationType of FlinkJar: "
-                                            + app.getApplicationType());
+                                switch (app.getApplicationType()) {
+                                    case STREAMPARK_FLINK:
+                                        fsOperator.mkdirs(app.getAppLib());
+                                        fsOperator.copy(uploadJar, app.getAppLib(), false, true);
+                                        break;
+                                    case APACHE_FLINK:
+                                        fsOperator.mkdirs(appHome);
+                                        fsOperator.copy(uploadJar, appHome, false, true);
+                                        break;
+                                    default:
+                                        throw new IllegalArgumentException(
+                                            "[StreamPark] unsupported ApplicationType of FlinkJar: "
+                                                + app.getApplicationType());
+                                }
+                            } else {
+                                fsOperator.upload(app.getDistHome(), appHome);
                             }
-                        } else {
-                            fsOperator.upload(app.getDistHome(), appHome);
                         }
                     } else {
                         if (!app.getDependencyObject().getJar().isEmpty()) {
@@ -453,12 +455,14 @@ public class FlinkApplicationBuildPipelineServiceImpl
      */
     private BuildPipeline createPipelineInstance(@Nonnull FlinkApplication app) {
         FlinkEnv flinkEnv = flinkEnvService.getByIdOrDefault(app.getVersionId());
-        String flinkUserJar = retrieveFlinkUserJar(flinkEnv, app);
-
-        if (!FileUtils.exists(flinkUserJar)) {
-            Resource resource = resourceService.findByResourceName(app.getTeamId(), app.getJar());
-            if (resource != null && StringUtils.isNotBlank(resource.getFilePath())) {
-                flinkUserJar = resource.getFilePath();
+        String flinkUserJar = app.getJar();
+        if (!app.isImageResource()) {
+            flinkUserJar = retrieveFlinkUserJar(flinkEnv, app);
+            if (!FileUtils.exists(flinkUserJar)) {
+                Resource resource = resourceService.findByResourceName(app.getTeamId(), app.getJar());
+                if (resource != null && StringUtils.isNotBlank(resource.getFilePath())) {
+                    flinkUserJar = resource.getFilePath();
+                }
             }
         }
 
@@ -542,7 +546,8 @@ public class FlinkApplicationBuildPipelineServiceImpl
                 dockerConfig.getNamespace(),
                 dockerConfig.getUsername(),
                 dockerConfig.getPassword()),
-            app.getIngressTemplate());
+            app.getIngressTemplate(),
+            app.isImageResource());
         return k8sApplicationBuildRequest;
     }
 

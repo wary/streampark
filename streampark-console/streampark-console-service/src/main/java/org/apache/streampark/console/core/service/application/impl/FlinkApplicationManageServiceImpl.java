@@ -17,6 +17,7 @@
 
 package org.apache.streampark.console.core.service.application.impl;
 
+import org.apache.streampark.common.conf.ConfigKeys;
 import org.apache.streampark.common.conf.Workspace;
 import org.apache.streampark.common.enums.ClusterState;
 import org.apache.streampark.common.enums.FlinkDeployMode;
@@ -280,10 +281,7 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
                     // in time.
                     if (record.isKubernetesModeJob()) {
                         // set duration
-                        String restUrl = k8SFlinkTrackMonitor
-                            .getRemoteRestUrl(k8sWatcherWrapper.toTrackId(record));
-                        record.setFlinkRestUrl(restUrl);
-                        setAppDurationIfNeeded(record, now);
+                        fillK8sAppProperties(record);
                     }
                     if (pipeStates.containsKey(record.getId())) {
                         record.setBuildStatus(pipeStates.get(record.getId()).getCode());
@@ -492,7 +490,7 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         application.setRelease(ReleaseStateEnum.NEED_RELEASE.get());
 
         // 1) jar job jar file changed
-        if (application.isUploadResource()) {
+        if (application.isUploadResource() || application.isImageResource()) {
             if (!Objects.equals(application.getJar(), appParam.getJar())) {
                 application.setBuild(true);
             } else {
@@ -539,6 +537,7 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         application.setDeployMode(appParam.getDeployMode());
         application.setFlinkImage(appParam.getFlinkImage());
         application.setK8sNamespace(appParam.getK8sNamespace());
+        application.setServiceAccount(application.getServiceAccount());
         application.updateHotParams(appParam);
         application.setK8sRestExposedType(appParam.getK8sRestExposedType());
         application.setK8sPodTemplate(appParam.getK8sPodTemplate());
@@ -760,18 +759,26 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         }
         // add flink web url info for k8s-mode
         if (application.isKubernetesModeJob()) {
-            String restUrl = k8SFlinkTrackMonitor.getRemoteRestUrl(k8sWatcherWrapper.toTrackId(application));
-            application.setFlinkRestUrl(restUrl);
-
-            // set duration
-            long now = System.currentTimeMillis();
-            setAppDurationIfNeeded(application, now);
+            fillK8sAppProperties(application);
         }
 
         application.setYarnQueueByHotParams();
         application.setAppControl(this.getAppControl(application));
 
         return application;
+    }
+
+    private void fillK8sAppProperties(FlinkApplication application) {
+        String restUrl = k8SFlinkTrackMonitor.getRemoteRestUrl(k8sWatcherWrapper.toTrackId(application));
+        application.setFlinkRestUrl(restUrl);
+
+        Object serviceAccount = application.getHotParamsMap().get(ConfigKeys.KEY_KERBEROS_SERVICE_ACCOUNT());
+        if (serviceAccount != null) {
+            application.setServiceAccount(serviceAccount.toString());
+        }
+        // set duration
+        long now = System.currentTimeMillis();
+        setAppDurationIfNeeded(application, now);
     }
 
     /**

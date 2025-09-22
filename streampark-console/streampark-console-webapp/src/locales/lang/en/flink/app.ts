@@ -50,6 +50,7 @@ export default {
   kubernetesNamespace: 'Kubernetes Namespace',
   kubernetesClusterId: 'Kubernetes ClusterId',
   flinkBaseDockerImage: 'Flink Base Docker Image',
+  flinkJobDockerImage: 'Flink Job Docker Image',
   restServiceExposedType: 'Rest-Service Exposed Type',
   resourceFrom: 'Resource From',
   uploadJobJar: 'Upload Job Jar',
@@ -261,6 +262,8 @@ export default {
     hadoopEnvInitMessage:
       'Hadoop environment initialization failed, please check the environment settings',
     resourceFromMessage: 'resource from is required',
+    programImagePlaceholder: 'Please enter Program Image',
+    programJarPlaceholder: 'Please enter Program Jar',
     mainClassPlaceholder: 'Please enter Main class',
     mainClassIsRequiredMessage: 'Program Main is required',
     projectPlaceholder: 'Please select project',

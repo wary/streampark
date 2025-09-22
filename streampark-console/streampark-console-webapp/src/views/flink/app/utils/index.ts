@@ -282,6 +282,7 @@ export function handleSubmitParams(
     alertId: values.alertId,
     description: values.description,
     k8sNamespace: values.k8sNamespace || null,
+    serviceAccount: values.serviceAccount || null,
     clusterId: values.clusterId || null,
     flinkClusterId: getFlinkClusterId(values),
     flinkImage: values.flinkImage || null,
