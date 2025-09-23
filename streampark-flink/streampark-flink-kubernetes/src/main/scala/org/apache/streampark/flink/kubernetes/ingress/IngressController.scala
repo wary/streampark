@@ -50,7 +50,9 @@ object IngressController extends Logger {
     ingressStrategy.getIngressUrl(nameSpace, clusterId, clusterClient)
   }
 
-  def prepareIngressTemplateFiles(buildWorkspace: String, ingressTemplates: String): String = {
-    ingressStrategy.prepareIngressTemplateFiles(buildWorkspace, ingressTemplates)
-  }
+  /**
+   *  def prepareIngressTemplateFiles(buildWorkspace: String, ingressTemplates: String): String = {
+   *    ingressStrategy.prepareIngressTemplateFiles(buildWorkspace, ingressTemplates)
+   *  }*
+   */
 }

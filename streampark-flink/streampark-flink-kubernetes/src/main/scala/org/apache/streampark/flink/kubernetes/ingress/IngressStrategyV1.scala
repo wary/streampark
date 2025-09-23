@@ -35,8 +35,7 @@ class IngressStrategyV1 extends IngressStrategy {
       Try {
         Option(
           Try(
-            client.network.v1
-              .ingresses()
+            client.network().ingresses()
               .inNamespace(nameSpace)
               .withName(clusterId)
               .get())

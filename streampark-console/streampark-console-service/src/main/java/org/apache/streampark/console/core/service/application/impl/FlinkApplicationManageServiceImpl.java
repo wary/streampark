@@ -511,7 +511,7 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         }
 
         // 2) k8s podTemplate changed.
-        if (application.getBuild() && isK8sPodTemplateChanged(application, appParam)) {
+        if (!application.getBuild() && isK8sPodTemplateChanged(application, appParam)) {
             application.setBuild(true);
         }
 
@@ -543,6 +543,7 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         application.setK8sPodTemplate(appParam.getK8sPodTemplate());
         application.setK8sJmPodTemplate(appParam.getK8sJmPodTemplate());
         application.setK8sTmPodTemplate(appParam.getK8sTmPodTemplate());
+        application.setIngressTemplate(appParam.getIngressTemplate());
         application.setK8sHadoopIntegration(appParam.getK8sHadoopIntegration());
 
         // changes to the following parameters do not affect running tasks
@@ -591,10 +592,8 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
     }
 
     /**
-     * update FlinkSql type jobs, there are 3 aspects to consider<br>
-     * 1. flink sql has changed <br>
-     * 2. dependency has changed<br>
-     * 3. parameter has changed<br>
+     * update FlinkSql type jobs, there are 3 aspects to consider<br> 1. flink sql has changed <br> 2. dependency has changed<br> 3.
+     * parameter has changed<br>
      *
      * @param application
      * @param appParam
@@ -819,12 +818,11 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
     }
 
     /**
-     * Judge the execution mode whether is the Yarn PerJob or Application mode with not default or
-     * empty queue label.
+     * Judge the execution mode whether is the Yarn PerJob or Application mode with not default or empty queue label.
      *
      * @param application application entity.
-     * @return If the deployMode is (Yarn PerJob or application mode) and the queue label is not
-     * (empty or default), return true, false else.
+     * @return If the deployMode is (Yarn PerJob or application mode) and the queue label is not (empty or default), return true, false
+     * else.
      */
     private boolean isYarnNotDefaultQueue(FlinkApplication application) {
         return FlinkDeployMode.isYarnPerJobOrAppMode(application.getDeployModeEnum())
@@ -835,6 +833,9 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         return FlinkDeployMode.isKubernetesMode(appParam.getDeployMode())
             && (ObjectUtils.trimNoEquals(
                 application.getK8sRestExposedType(), appParam.getK8sRestExposedType())
+                || ObjectUtils.trimNoEquals(
+                    application.getIngressTemplate(),
+                    appParam.getIngressTemplate())
                 || ObjectUtils.trimNoEquals(
                     application.getK8sJmPodTemplate(),
                     appParam.getK8sJmPodTemplate())

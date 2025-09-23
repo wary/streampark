@@ -105,9 +105,9 @@ object KubernetesRetriever extends Logger {
    * check whether deployment exists on kubernetes cluster
    *
    * @param namespace
-   *   deployment namespace
+   * deployment namespace
    * @param deploymentName
-   *   deployment name
+   * deployment name
    */
   def isDeploymentExists(namespace: String, deploymentName: String): Boolean = {
 
@@ -156,13 +156,17 @@ object KubernetesRetriever extends Logger {
 
   /** retrieve flink jobManager rest url */
   def retrieveFlinkRestUrl(clusterKey: ClusterKey): Option[String] = {
-    val client = KubernetesRetriever
-      .newFinkClusterClient(clusterKey.clusterId, clusterKey.namespace, clusterKey.executeMode)
-      .getOrElse(return None)
-    val url =
-      IngressController.getIngressUrlAddress(clusterKey.namespace, clusterKey.clusterId, client)
-    logger.info(s"retrieve flink jobManager rest url: $url")
-    Some(url)
+    if (this.isDeploymentExists(clusterKey.namespace, clusterKey.clusterId)) {
+      val client = KubernetesRetriever
+        .newFinkClusterClient(clusterKey.clusterId, clusterKey.namespace, clusterKey.executeMode)
+        .getOrElse(return None)
+      val url =
+        IngressController.getIngressUrlAddress(clusterKey.namespace, clusterKey.clusterId, client)
+      logger.info(s"retrieve flink jobManager rest url: $url")
+      Some(url)
+    } else {
+      None
+    }
   }
 
 }

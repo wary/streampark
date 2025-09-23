@@ -19,6 +19,7 @@ package org.apache.streampark.console.core.service.impl;
 
 import org.apache.streampark.common.enums.ClusterState;
 import org.apache.streampark.common.enums.FlinkDeployMode;
+import org.apache.streampark.common.fs.LfsOperator;
 import org.apache.streampark.common.util.YarnUtils;
 import org.apache.streampark.console.base.domain.RestRequest;
 import org.apache.streampark.console.base.exception.ApiAlertException;
@@ -39,8 +40,9 @@ import org.apache.streampark.flink.client.bean.DeployResponse;
 import org.apache.streampark.flink.client.bean.KubernetesDeployParam;
 import org.apache.streampark.flink.client.bean.ShutDownRequest;
 import org.apache.streampark.flink.client.bean.ShutDownResponse;
+import org.apache.streampark.flink.kubernetes.PodTemplateTool;
+import org.apache.streampark.flink.kubernetes.model.K8sPodTemplates;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -59,14 +61,11 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -214,7 +213,6 @@ public class FlinkClusterServiceImpl extends ServiceImpl<FlinkClusterMapper, Fli
         boolean success = validateQueueIfNeeded(flinkCluster, paramOfCluster);
         ApiAlertException.throwIfFalse(
             success, String.format(ERROR_CLUSTER_QUEUE_HINT, paramOfCluster.getYarnQueue()));
-
         flinkCluster.setClusterName(paramOfCluster.getClusterName());
         flinkCluster.setAlertId(paramOfCluster.getAlertId());
         flinkCluster.setDescription(paramOfCluster.getDescription());
@@ -435,18 +433,19 @@ public class FlinkClusterServiceImpl extends ServiceImpl<FlinkClusterMapper, Fli
 
         Map<String, Object> properties = flinkCluster.getProperties();
         if (flinkCluster.getFlinkDeployModeEnum() == KUBERNETES_NATIVE_SESSION) {
-            String podTemplate = configService.readPodTemplate();
-            File file = new File("/tmp/" + UUID.randomUUID());
-            try {
-                IOUtils.write(podTemplate, new FileOutputStream(file, false));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } finally {
-                file.deleteOnExit();
-            }
-            properties.put("kubernetes.pod-template-file.default", file.getAbsolutePath());
-        }
+            K8sPodTemplates k8sPodTemplates = new K8sPodTemplates(
+                configService.readPodTemplate(), "", "", configService.readIngressTemplate());
+            String buildWorkspace = "/tmp/" + flinkCluster.getClusterId() + "@" + flinkCluster.getK8sNamespace();
+            LfsOperator.mkCleanDirs(buildWorkspace);
+            Map<String, String> values = new HashMap<String, String>() {
 
+                {
+                    put("clusterId", flinkCluster.getClusterId());
+                }
+            };
+            properties
+                .putAll(PodTemplateTool.preparePodTemplateFiles(buildWorkspace, k8sPodTemplates, values).tmplFiles());
+        }
         DeployRequest deployRequest = new DeployRequest(
             flinkEnvService.getById(flinkCluster.getVersionId()).getFlinkVersion(),
             flinkCluster.getFlinkDeployModeEnum(),
@@ -456,7 +455,7 @@ public class FlinkClusterServiceImpl extends ServiceImpl<FlinkClusterMapper, Fli
             getKubernetesDeployDesc(flinkCluster, "start"));
         log.info("Deploy cluster request {}", deployRequest);
         Future<DeployResponse> future = executorService.submit(() -> FlinkClient.deploy(deployRequest));
-        return future.get(60, TimeUnit.SECONDS);
+        return future.get(300, TimeUnit.SECONDS);
     }
 
     private void checkActiveIfNeeded(FlinkCluster flinkCluster) {

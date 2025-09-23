@@ -229,11 +229,11 @@ public class FlinkClusterWatcher {
             String res =
                 HttpClientUtils.httpGetRequest(
                     flinkUrl,
-                    RequestConfig.custom().setConnectTimeout(5000, TimeUnit.MILLISECONDS).build());
+                    RequestConfig.custom().setConnectTimeout(10000, TimeUnit.MILLISECONDS).build());
             JacksonUtils.read(res, Overview.class);
             return ClusterState.RUNNING;
         } catch (Exception ignored) {
-            if (flinkCluster.equals(ClusterState.STARTING.getState())
+            if (flinkCluster.getClusterState().equals(ClusterState.STARTING.getState())
                 && (System.currentTimeMillis() - flinkCluster.getStartTime().getTime()) <= 5 * 60 * 1000) {
                 return ClusterState.STARTING;
             }
@@ -275,10 +275,8 @@ public class FlinkClusterWatcher {
      * @param flinkCluster
      */
     public static void addWatching(FlinkCluster flinkCluster) {
-        if (!WATCHER_CLUSTERS.containsKey(flinkCluster.getId())) {
-            log.info("add the cluster with id:{} to watcher cluster cache", flinkCluster.getId());
-            WATCHER_CLUSTERS.put(flinkCluster.getId(), flinkCluster);
-        }
+        log.info("add the cluster with id:{} to watcher cluster cache", flinkCluster.getId());
+        WATCHER_CLUSTERS.put(flinkCluster.getId(), flinkCluster);
     }
 
     /** @param flinkCluster */

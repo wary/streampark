@@ -18,13 +18,10 @@
 package org.apache.streampark.flink.kubernetes.ingress
 
 import org.apache.streampark.common.conf.{ConfigKeys, InternalConfigHolder, K8sFlinkConfig}
-import org.apache.streampark.common.util.FileUtils
 
 import org.apache.flink.client.program.ClusterClient
 import org.apache.flink.kubernetes.shaded.io.fabric8.kubernetes.api.model.{OwnerReference, OwnerReferenceBuilder}
 import org.apache.flink.kubernetes.shaded.io.fabric8.kubernetes.client.DefaultKubernetesClient
-
-import java.io.File
 
 trait IngressStrategy {
 
@@ -37,17 +34,19 @@ trait IngressStrategy {
 
   def configureIngress(domainName: String, clusterId: String, nameSpace: String): Unit
 
-  def prepareIngressTemplateFiles(buildWorkspace: String, ingressTemplates: String): String = {
-    val workspaceDir = new File(buildWorkspace)
-    if (!workspaceDir.exists) workspaceDir.mkdir
-    if (ingressTemplates.isEmpty) null
-    else {
-      val outputPath = buildWorkspace + "/ingress.yaml"
-      val outputFile = new File(outputPath)
-      FileUtils.writeFile(ingressTemplates, outputFile)
-      outputPath
-    }
-  }
+  /**
+   *  def prepareIngressTemplateFiles(buildWorkspace: String, ingressTemplates: String): String = {
+   *    val workspaceDir = new File(buildWorkspace)
+   *    if (!workspaceDir.exists) workspaceDir.mkdir
+   *    if (ingressTemplates.isEmpty) null
+   *    else {
+   *      val outputPath = buildWorkspace + "/ingress.yaml"
+   *      val outputFile = new File(outputPath)
+   *      FileUtils.writeFile(ingressTemplates, outputFile)
+   *      outputPath
+   *    }
+   *  }
+   */
 
   def buildIngressAnnotations(clusterId: String, namespace: String): Map[String, String] = {
     Map(

@@ -21,6 +21,7 @@ import org.apache.streampark.common.enums.FlinkDeployMode
 import org.apache.streampark.flink.client.`trait`.KubernetesNativeClientTrait
 import org.apache.streampark.flink.client.K8sIngressClusterHelper
 import org.apache.streampark.flink.client.bean._
+import org.apache.streampark.flink.kubernetes.ingress.IngressController
 import org.apache.streampark.flink.packer.pipeline.DockerImageBuildResponse
 
 import com.google.common.collect.Lists
@@ -61,6 +62,11 @@ object KubernetesNativeApplicationClient extends KubernetesNativeClientTrait {
     // add flink container image tag to flink configuration
     flinkConfig.safeSet(KubernetesConfigOptions.CONTAINER_IMAGE, buildResult.flinkImageTag)
 
+    // add pod template and to flink configuration
+    buildResult.podTemplatePaths.foreach(e => {
+      flinkConfig.setString(e._1, e._2)
+    })
+
     // retrieve k8s cluster and submit flink job on application mode
     val (descriptor, clusterSpecification) =
       getK8sClusterDescriptorAndSpecification(flinkConfig)
@@ -72,12 +78,15 @@ object KubernetesNativeApplicationClient extends KubernetesNativeClientTrait {
       .getClusterClient
     val clusterId = clusterClient.getClusterId
     val kubeClient = K8sIngressClusterHelper.createK8sClient(flinkConfig)
-    val ingressURL = K8sIngressClusterHelper.getOrCreateIngress(clusterId, kubeClient, flinkConfig)
+    var webInterfaceURL = K8sIngressClusterHelper.getOrCreateIngress(clusterId, kubeClient, flinkConfig)
+    if (StringUtils.isBlank(webInterfaceURL)) {
+      webInterfaceURL = IngressController.getIngressUrlAddress(kubeClient.getNamespace, clusterId, clusterClient)
+    }
     val result = SubmitResponse(
       clusterId,
       flinkConfig.toMap,
       submitRequest.jobId,
-      ingressURL)
+      webInterfaceURL)
     logInfo(s"[flink-submit] flink job has been submitted. ${flinkConfIdentifierInfo(flinkConfig)}")
     closeSubmit(submitRequest, clusterDescriptor, clusterClient, kubeClient)
     result
@@ -91,12 +100,19 @@ object KubernetesNativeApplicationClient extends KubernetesNativeClientTrait {
       cancelRequest,
       flinkConf,
       (jobId, client) => {
-        val resp = super.cancelJob(cancelRequest, jobId, client)
-        client.shutDownCluster()
-        val kubeClient = K8sIngressClusterHelper.createK8sClient(flinkConf)
-        K8sIngressClusterHelper.deleteIngress(cancelRequest.clusterId, kubeClient, flinkConf)
-        kubeClient.close()
-        CancelResponse(resp)
+        try {
+          val resp = super.cancelJob(cancelRequest, jobId, client)
+          client.shutDownCluster()
+          CancelResponse(resp)
+        } finally {
+          val kubeClient = K8sIngressClusterHelper.createK8sClient(flinkConf)
+          try {
+            K8sIngressClusterHelper.deleteIngress(cancelRequest.clusterId, kubeClient)
+            kubeClient.apps().deployments().withName(cancelRequest.clusterId).delete()
+          } finally {
+            kubeClient.close()
+          }
+        }
       })
   }
 

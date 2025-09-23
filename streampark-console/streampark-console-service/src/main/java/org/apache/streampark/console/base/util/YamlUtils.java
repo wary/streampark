@@ -22,7 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.IOException;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -30,7 +30,7 @@ import java.util.Map;
 
 public class YamlUtils {
 
-    public static void mergeYaml(String yamlStr1, String yamlStr2, Writer output) throws IOException {
+    public static void mergeYaml(String yamlStr1, String yamlStr2, Writer output) {
         Yaml yaml = new Yaml();
         Map<String, Object> yaml1 = loadYamlFile(yaml, yamlStr1);
         Map<String, Object> yaml2 = loadYamlFile(yaml, yamlStr2);
@@ -42,7 +42,13 @@ public class YamlUtils {
         outputYaml.dump(merged, output);
     }
 
-    private static Map<String, Object> loadYamlFile(Yaml yaml, String content) throws IOException {
+    public static String mergeYaml(String yamlStr1, String yamlStr2) {
+        StringWriter stringWriter = new StringWriter();
+        mergeYaml(yamlStr1, yamlStr2, stringWriter);
+        return stringWriter.toString();
+    }
+
+    private static Map<String, Object> loadYamlFile(Yaml yaml, String content) {
         Map<String, Object> data = null;
         if (StringUtils.isNotBlank(content)) {
             data = yaml.load(content);

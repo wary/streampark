@@ -37,7 +37,6 @@ import org.apache.streampark.console.base.exception.ApiAlertException;
 import org.apache.streampark.console.base.exception.ApplicationException;
 import org.apache.streampark.console.base.util.Tuple2;
 import org.apache.streampark.console.base.util.Tuple3;
-import org.apache.streampark.console.base.util.YamlUtils;
 import org.apache.streampark.console.core.entity.ApplicationBuildPipeline;
 import org.apache.streampark.console.core.entity.ApplicationLog;
 import org.apache.streampark.console.core.entity.FlinkApplication;
@@ -80,7 +79,6 @@ import org.apache.streampark.flink.client.bean.SubmitRequest;
 import org.apache.streampark.flink.client.bean.SubmitResponse;
 import org.apache.streampark.flink.kubernetes.FlinkK8sWatcher;
 import org.apache.streampark.flink.kubernetes.helper.KubernetesDeploymentHelper;
-import org.apache.streampark.flink.kubernetes.ingress.IngressController;
 import org.apache.streampark.flink.kubernetes.model.TrackId;
 import org.apache.streampark.flink.packer.pipeline.BuildResult;
 import org.apache.streampark.flink.packer.pipeline.ShadedBuildResponse;
@@ -92,7 +90,6 @@ import org.apache.flink.configuration.CoreOptions;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.MemorySize;
 import org.apache.flink.configuration.RestOptions;
-import org.apache.flink.kubernetes.shaded.io.fabric8.kubernetes.client.KubernetesClientException;
 import org.apache.flink.runtime.jobgraph.SavepointConfigOptions;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
@@ -113,7 +110,6 @@ import javax.annotation.Nonnull;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.net.URI;
 import java.util.Date;
 import java.util.EnumSet;
@@ -561,6 +557,7 @@ public class FlinkApplicationActionServiceImpl
     private void processForK8sApp(FlinkApplication application, ApplicationLog applicationLog) {
         application.setRelease(ReleaseStateEnum.DONE.get());
         k8SFlinkTrackMonitor.doWatching(k8sWatcherWrapper.toTrackId(application));
+        /**
         if (!FlinkDeployMode.isKubernetesApplicationMode(application.getDeployMode())) {
             return;
         }
@@ -578,6 +575,7 @@ public class FlinkApplicationActionServiceImpl
                 application.setOptionState(OptionStateEnum.NONE.getValue());
             }
         }
+         **/
     }
 
     private void processForException(
@@ -783,27 +781,6 @@ public class FlinkApplicationActionServiceImpl
         } else if (KUBERNETES_NATIVE_APPLICATION == application.getDeployModeEnum()) {
             properties.putAll(application.getHotParamsMap());
             properties.put(ConfigKeys.KEY_K8S_IMAGE_PULL_POLICY(), "Always");
-            String podTemplateKey = "kubernetes.pod-template-file.default";
-            StringWriter stringWriter = new StringWriter();
-            try {
-                YamlUtils.mergeYaml(configService.readPodTemplate(), application.getK8sPodTemplate(), stringWriter);
-                setPodTemplate(application, stringWriter.toString(), podTemplateKey, properties);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } finally {
-                try {
-                    stringWriter.close();
-                } catch (IOException e) {
-                    // pass
-                }
-            }
-            String jmPodTemplateKey = "kubernetes.pod-template-file.jobmanager";
-            String jmPodTemplateCon = application.getK8sJmPodTemplate();
-            setPodTemplate(application, jmPodTemplateCon, jmPodTemplateKey, properties);
-
-            String tmPodTemplateKey = "kubernetes.pod-template-file.taskmanager";
-            String tmPodTemplateCon = application.getK8sTmPodTemplate();
-            setPodTemplate(application, tmPodTemplateCon, tmPodTemplateKey, properties);
         }
 
         if (FlinkDeployMode.isKubernetesApplicationMode(application.getDeployMode())) {

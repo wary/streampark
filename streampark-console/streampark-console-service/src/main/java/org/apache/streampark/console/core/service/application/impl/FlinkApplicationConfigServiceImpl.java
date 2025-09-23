@@ -60,6 +60,8 @@ public class FlinkApplicationConfigServiceImpl
 
     private String flinkPodTemplate = null;
 
+    private String flinkIngressTemplate = null;
+
     @Autowired
     private ResourceLoader resourceLoader;
 
@@ -262,6 +264,20 @@ public class FlinkApplicationConfigServiceImpl
             }
         }
         return this.flinkPodTemplate;
+    }
+
+    @Override
+    public synchronized String readIngressTemplate() {
+        if (flinkIngressTemplate == null) {
+            Resource resource = resourceLoader.getResource("classpath:flink-ingress-template.yaml");
+            try {
+                this.flinkIngressTemplate = IOUtils.toString(resource.getInputStream());
+            } catch (Exception e) {
+                log.error("Read conf/flink-ingress-template.yaml failed, please check your deployment");
+                log.error(e.getMessage(), e);
+            }
+        }
+        return this.flinkIngressTemplate;
     }
 
     @Override

@@ -125,6 +125,13 @@ public interface FlinkApplicationConfigService extends IService<FlinkApplication
     String readPodTemplate();
 
     /**
+     * Reads an ingress template from a file or a database.
+     *
+     * @return the content of the ingress template as a String
+     */
+    String readIngressTemplate();
+
+    /**
      * Removes the app with the specified appId.
      *
      * @param appId The id of the app to be removed.

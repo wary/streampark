@@ -197,8 +197,7 @@ public class FlinkApplication extends BaseEntity {
     private String jar;
 
     /**
-     * for upload type tasks, checkSum needs to be recorded whether it needs to be republished after
-     * the update and modify.
+     * for upload type tasks, checkSum needs to be recorded whether it needs to be republished after the update and modify.
      */
     private Long jarCheckSum;
 
@@ -321,7 +320,7 @@ public class FlinkApplication extends BaseEntity {
     }
 
     public K8sPodTemplates getK8sPodTemplates() {
-        return K8sPodTemplates.of(k8sPodTemplate, k8sJmPodTemplate, k8sTmPodTemplate);
+        return K8sPodTemplates.of(k8sPodTemplate, k8sJmPodTemplate, k8sTmPodTemplate, ingressTemplate);
     }
 
     public void setState(Integer state) {

@@ -27,6 +27,7 @@ import org.apache.streampark.flink.client.tool.FlinkSessionSubmitHelper
 import org.apache.streampark.flink.core.FlinkKubernetesClient
 import org.apache.streampark.flink.kubernetes.KubernetesRetriever
 import org.apache.streampark.flink.kubernetes.enums.FlinkK8sDeployMode
+import org.apache.streampark.flink.kubernetes.ingress.IngressController
 import org.apache.streampark.flink.kubernetes.model.ClusterKey
 
 import org.apache.commons.lang3.StringUtils
@@ -153,7 +154,10 @@ object KubernetesNativeSessionClient extends KubernetesNativeClientTrait with Lo
       }
       var webInterfaceURL = K8sIngressClusterHelper.getOrCreateIngress(deployRequest.clusterId, k8sClient, flinkConfig)
       if (StringUtils.isBlank(webInterfaceURL)) {
-        webInterfaceURL = client.getWebInterfaceURL
+        webInterfaceURL = IngressController.getIngressUrlAddress(
+          deployRequest.k8sParam.kubernetesNamespace,
+          deployRequest.clusterId,
+          client)
       }
       DeployResponse(webInterfaceURL, clusterId = client.getClusterId)
     } catch {
@@ -165,8 +169,8 @@ object KubernetesNativeSessionClient extends KubernetesNativeClientTrait with Lo
 
   def shutdown(shutDownRequest: ShutDownRequest): ShutDownResponse = {
     var kubeClient: FlinkKubeClient = null
+    val flinkConfig = getFlinkK8sConfig(shutDownRequest)
     try {
-      val flinkConfig = getFlinkK8sConfig(shutDownRequest)
       kubeClient = FlinkKubeClientFactory.getInstance.fromConfiguration(flinkConfig, "client")
       val kubeClientWrapper = new FlinkKubernetesClient(kubeClient)
 
@@ -186,7 +190,17 @@ object KubernetesNativeSessionClient extends KubernetesNativeClientTrait with Lo
         e.printStackTrace()
         throw e
     } finally {
-      Utils.close(kubeClient)
+      try {
+        val kubeClient = K8sIngressClusterHelper.createK8sClient(flinkConfig)
+        try {
+          K8sIngressClusterHelper.deleteIngress(shutDownRequest.clusterId, kubeClient)
+          kubeClient.apps().deployments().withName(shutDownRequest.clusterId).delete()
+        } finally {
+          kubeClient.close()
+        }
+      } finally {
+        Utils.close(kubeClient)
+      }
     }
   }
 

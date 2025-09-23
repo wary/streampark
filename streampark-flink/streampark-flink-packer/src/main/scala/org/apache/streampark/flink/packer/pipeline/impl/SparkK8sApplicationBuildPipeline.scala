@@ -33,6 +33,7 @@ import java.io.File
 import java.nio.file.Paths
 import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
 
+import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Building pipeline for Spark kubernetes-native application mode */
@@ -83,8 +84,8 @@ class SparkK8sApplicationBuildPipeline(request: SparkK8sApplicationBuildRequest)
             PodTemplateTool
               .preparePodTemplateFiles(buildWorkspace, podTemplate)
               .tmplFiles
-          logInfo(s"Export spark podTemplates: ${podTemplateFiles.values.mkString(",")}")
-          podTemplateFiles
+          logInfo(s"Export spark podTemplates: ${podTemplateFiles.values.toArray.mkString(",")}")
+          podTemplateFiles.asScala.toMap
         }.getOrElse(throw getError.exception)
     }
 

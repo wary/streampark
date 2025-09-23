@@ -68,7 +68,7 @@ public class K8sIngressClusterDescriptor extends KubernetesClusterDescriptor {
     private ClusterClientProvider<String> createClusterClientProvider(String clusterId) {
         return () -> {
             final Configuration configuration = new Configuration(flinkConfig);
-            Ingress ingress = K8sIngressClusterHelper.getIngress(clusterId, this.kubernetesClient, this.flinkConfig);
+            Ingress ingress = K8sIngressClusterHelper.getIngress(clusterId, this.kubernetesClient);
             if (ingress != null) {
                 configuration.set(RestOptions.ADDRESS, ingress.getSpec().getRules().get(0).getHost());
                 configuration.set(RestOptions.PORT, 80);
@@ -94,7 +94,7 @@ public class K8sIngressClusterDescriptor extends KubernetesClusterDescriptor {
     }
 
     private String getWebMonitorAddress(Configuration configuration) throws Exception {
-        Ingress ingress = K8sIngressClusterHelper.getIngress(clusterId, this.kubernetesClient, this.flinkConfig);
+        Ingress ingress = K8sIngressClusterHelper.getIngress(clusterId, this.kubernetesClient);
         if (ingress != null) {
             return K8sIngressClusterHelper.getWebMonitorAddress(ingress, configuration);
         } else {

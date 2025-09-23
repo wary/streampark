@@ -55,14 +55,19 @@
       type: String,
       default: '',
     },
+    ingressTemplate: {
+      type: String,
+      default: '',
+    },
   });
-  const emit = defineEmits(['update:podTemplate', 'update:jmPodTemplate', 'update:tmPodTemplate']);
+  const emit = defineEmits(['update:podTemplate', 'update:jmPodTemplate', 'update:tmPodTemplate', 'update:ingressTemplate']);
 
   const { t } = useI18n();
   const podTemplateTab = ref('pod-template');
   const podTemplateRef = ref<HTMLDivElement>();
   const jmpodTemplateRef = ref<HTMLDivElement>();
   const tmpodTemplateRef = ref<HTMLDivElement>();
+  const ingressTemplateRef = ref<HTMLDivElement>();
   const historyRecord = reactive<{
     podTemplate: string[];
     jmPodTemplate: string[];
@@ -107,6 +112,18 @@
   );
   tmpodContentChange((value) => {
     emit('update:tmPodTemplate', value);
+  });
+
+  const { setContent: setIngressContent, onChange: ingressContentChange } = useMonaco(
+    ingressTemplateRef,
+    {
+      language: 'yaml',
+      ...getMonacoOptions(false),
+    },
+    beforeMonacoMount,
+  );
+  ingressContentChange((value) => {
+    emit('update:ingressTemplate', value);
   });
 
   async function beforeMonacoMount(monaco) {
@@ -261,6 +278,10 @@
         setTmPodContent(content);
         emit('update:tmPodTemplate', content);
         break;
+      case 'ingressVisual':
+        setIngressContent(content);
+        emit('update:ingressTemplate', content);
+        break;
       default:
         break;
     }
@@ -300,6 +321,16 @@
         @click-history="showPodTemplateDrawer('tmPtVisual')"
         @click-init="handleGetInitPodTemplate('tmPtVisual')"
         @click-host-alias="showTemplateHostAliasDrawer('tmPtVisual')"
+      />
+    </TabPane>
+
+    <TabPane key="ingress-template" tab="Ingress Template" forceRender>
+      <div ref="ingressTemplateRef" class="tm-pod-template-box syntax-true"></div>
+      <TemplateButtonGroup
+        visualType="ingressVisual"
+        @click-history="showPodTemplateDrawer('ingressVisual')"
+        @click-init="handleGetInitPodTemplate('ingressVisual')"
+        @click-host-alias="showTemplateHostAliasDrawer('ingressVisual')"
       />
     </TabPane>
   </Tabs>

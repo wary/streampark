@@ -25,19 +25,24 @@ import org.apache.commons.lang3.StringUtils
 import org.apache.flink.configuration.Configuration
 
 import java.io.File
+import java.util.Map
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 object PodTemplateTool {
 
   val KUBERNETES_POD_TEMPLATE: PodTemplateType =
-    PodTemplateType("kubernetes.pod-template-file", "pod-template.yaml")
+    PodTemplateType("kubernetes.pod-template-file.default", "pod-template.yaml")
 
   val KUBERNETES_JM_POD_TEMPLATE: PodTemplateType =
     PodTemplateType("kubernetes.pod-template-file.jobmanager", "jm-pod-template.yaml")
 
   val KUBERNETES_TM_POD_TEMPLATE: PodTemplateType =
     PodTemplateType("kubernetes.pod-template-file.taskmanager", "tm-pod-template.yaml")
+
+  val KUBERNETES_INGRESS_TEMPLATE: PodTemplateType =
+    PodTemplateType("kubernetes.ingress-template-file", "ingress-template.yaml")
 
   val KUBERNETES_DRIVER_POD_TEMPLATE: PodTemplateType =
     PodTemplateType("spark.kubernetes.driver.podTemplateFile", "driver-pod-template.yaml")
@@ -49,15 +54,16 @@ object PodTemplateTool {
    * Prepare kubernetes pod template file to buildWorkspace direactory.
    *
    * @param buildWorkspace
-   *   project workspace dir of flink job
+   * project workspace dir of flink job
    * @param podTemplates
-   *   flink kubernetes pod templates
+   * flink kubernetes pod templates
    * @return
-   *   Map[k8s pod template option, template file output path]
+   * Map[k8s pod template option, template file output path]
    */
   def preparePodTemplateFiles(
       buildWorkspace: String,
-      podTemplates: K8sPodTemplates): K8sPodTemplateFiles = {
+      podTemplates: K8sPodTemplates,
+      values: Map[String, String] = null): K8sPodTemplateFiles = {
     val workspaceDir = new File(buildWorkspace)
     if (!workspaceDir.exists()) {
       workspaceDir.mkdir()
@@ -66,9 +72,10 @@ object PodTemplateTool {
     val podTempleMap = mutable.Map[String, String]()
     val outputTmplContent = (tmplContent: String, podTmpl: PodTemplateType) => {
       if (StringUtils.isNotBlank(tmplContent)) {
+        val template = renderTemplate(tmplContent, values)
         val outputPath = s"$buildWorkspace/${podTmpl.fileName}"
         val outputFile = new File(outputPath)
-        FileUtils.write(outputFile, tmplContent, "UTF-8")
+        FileUtils.write(outputFile, template, "UTF-8")
         podTempleMap += (podTmpl.key -> outputPath)
       }
     }
@@ -76,18 +83,29 @@ object PodTemplateTool {
     outputTmplContent(podTemplates.podTemplate, KUBERNETES_POD_TEMPLATE)
     outputTmplContent(podTemplates.jmPodTemplate, KUBERNETES_JM_POD_TEMPLATE)
     outputTmplContent(podTemplates.tmPodTemplate, KUBERNETES_TM_POD_TEMPLATE)
-    K8sPodTemplateFiles(podTempleMap.toMap)
+    outputTmplContent(podTemplates.ingressTemplate, KUBERNETES_INGRESS_TEMPLATE)
+    K8sPodTemplateFiles(podTempleMap.toMap.asJava)
+  }
+
+  private def renderTemplate(template: String, values: Map[String, String]): String = {
+    var result: String = template
+    if (values != null && values.size() > 0 && template.contains("${")) {
+      values.entrySet().forEach(e => {
+        result = result.replaceAll("\\$\\{" + e.getKey + "\\}", e.getValue)
+      })
+    }
+    result
   }
 
   /**
    * Prepare kubernetes pod template file to buildWorkspace direactory.
    *
    * @param buildWorkspace
-   *   project workspace dir of spark job
+   * project workspace dir of spark job
    * @param podTemplates
-   *   spark kubernetes pod templates
+   * spark kubernetes pod templates
    * @return
-   *   Map[k8s pod template option, template file output path]
+   * Map[k8s pod template option, template file output path]
    */
   def preparePodTemplateFiles(
       buildWorkspace: String,
@@ -109,7 +127,7 @@ object PodTemplateTool {
 
     outputTmplContent(podTemplates.driverPodTemplate, KUBERNETES_DRIVER_POD_TEMPLATE)
     outputTmplContent(podTemplates.executorPodTemplate, KUBERNETES_EXECUTOR_POD_TEMPLATE)
-    K8sPodTemplateFiles(podTempleMap.toMap)
+    K8sPodTemplateFiles(podTempleMap.toMap.asJava)
   }
 }
 
@@ -121,7 +139,7 @@ case class K8sPodTemplateFiles(tmplFiles: Map[String, String]) {
 
   /** merge k8s pod template configuration to Flink Configuration */
   def mergeToFlinkConf(flinkConf: Configuration): Unit =
-    tmplFiles
+    tmplFiles.asScala
       .filter(_._2.nonEmpty)
       .foreach(e => flinkConf.setString(e._1, e._2))
 

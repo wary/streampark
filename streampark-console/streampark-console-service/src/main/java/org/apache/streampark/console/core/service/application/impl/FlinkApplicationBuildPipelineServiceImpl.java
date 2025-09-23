@@ -28,6 +28,7 @@ import org.apache.streampark.common.util.FileUtils;
 import org.apache.streampark.console.base.exception.ApiAlertException;
 import org.apache.streampark.console.base.util.JacksonUtils;
 import org.apache.streampark.console.base.util.WebUtils;
+import org.apache.streampark.console.base.util.YamlUtils;
 import org.apache.streampark.console.core.bean.Dependency;
 import org.apache.streampark.console.core.bean.DockerConfig;
 import org.apache.streampark.console.core.entity.ApplicationBuildPipeline;
@@ -58,6 +59,7 @@ import org.apache.streampark.console.core.service.application.FlinkApplicationIn
 import org.apache.streampark.console.core.service.application.FlinkApplicationManageService;
 import org.apache.streampark.console.core.util.ServiceHelper;
 import org.apache.streampark.console.core.watcher.FlinkAppHttpWatcher;
+import org.apache.streampark.flink.kubernetes.model.K8sPodTemplates;
 import org.apache.streampark.flink.packer.docker.DockerConf;
 import org.apache.streampark.flink.packer.maven.Artifact;
 import org.apache.streampark.flink.packer.maven.DependencyInfo;
@@ -527,6 +529,7 @@ public class FlinkApplicationBuildPipelineServiceImpl
                                                                                  String flinkUserJar,
                                                                                  FlinkEnv flinkEnv,
                                                                                  DockerConfig dockerConfig) {
+        K8sPodTemplates k8sPodTemplates = app.getK8sPodTemplates();
         FlinkK8sApplicationBuildRequest k8sApplicationBuildRequest = new FlinkK8sApplicationBuildRequest(
             app.getJobName(),
             app.getLocalAppHome(),
@@ -539,7 +542,12 @@ public class FlinkApplicationBuildPipelineServiceImpl
             app.getJobName(),
             app.getK8sNamespace(),
             app.getFlinkImage(),
-            app.getK8sPodTemplates(),
+            K8sPodTemplates.of(
+                YamlUtils.mergeYaml(applicationConfigService.readPodTemplate(), k8sPodTemplates.podTemplate()),
+                k8sPodTemplates.jmPodTemplate(),
+                k8sPodTemplates.tmPodTemplate(),
+                StringUtils.isNotBlank(k8sPodTemplates.ingressTemplate()) ? k8sPodTemplates.ingressTemplate()
+                    : applicationConfigService.readIngressTemplate()),
             app.getK8sHadoopIntegration() != null ? app.getK8sHadoopIntegration() : false,
             DockerConf.of(
                 dockerConfig.getAddress(),

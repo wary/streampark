@@ -21,7 +21,6 @@ import org.apache.streampark.common.fs.LfsOperator
 import org.apache.streampark.common.util.Implicits._
 import org.apache.streampark.common.util.ThreadUtils
 import org.apache.streampark.flink.kubernetes.PodTemplateTool
-import org.apache.streampark.flink.kubernetes.ingress.IngressController
 import org.apache.streampark.flink.packer.docker._
 import org.apache.streampark.flink.packer.maven.MavenTool
 import org.apache.streampark.flink.packer.pipeline._
@@ -81,26 +80,13 @@ class FlinkK8sApplicationBuildPipeline(request: FlinkK8sApplicationBuildRequest)
         Map[String, String]()
       case podTemplate =>
         execStep(2) {
+          val values = Map("clusterId" -> request.clusterId)
           val podTemplateFiles =
             PodTemplateTool
-              .preparePodTemplateFiles(buildWorkspace, podTemplate)
+              .preparePodTemplateFiles(buildWorkspace, podTemplate, values)
               .tmplFiles
           logInfo(s"Export flink podTemplates: ${podTemplateFiles.values.mkString(",")}")
-          podTemplateFiles
-        }.getOrElse(throw getError.exception)
-    }
-
-    // Step-3:  init build workspace of ingress
-    val ingressOutputPath = request.ingressTemplate match {
-      case ingress if StringUtils.isBlank(ingress) =>
-        skipStep(3)
-        ""
-      case _ =>
-        execStep(3) {
-          val ingressOutputPath =
-            IngressController.prepareIngressTemplateFiles(buildWorkspace, request.ingressTemplate)
-          logInfo(s"Export flink ingress: $ingressOutputPath")
-          ingressOutputPath
+          podTemplateFiles.toMap
         }.getOrElse(throw getError.exception)
     }
 

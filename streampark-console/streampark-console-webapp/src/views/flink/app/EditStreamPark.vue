@@ -325,6 +325,7 @@
         unref(podTemplateRef)?.handleChoicePodTemplate('ptVisual', res.k8sPodTemplate);
         unref(podTemplateRef)?.handleChoicePodTemplate('jmPtVisual', res.k8sJmPodTemplate);
         unref(podTemplateRef)?.handleChoicePodTemplate('tmPtVisual', res.k8sTmPodTemplate);
+        unref(podTemplateRef)?.handleChoicePodTemplate('ingressVisual', res.ingressTemplate);
       }, 1000);
     });
     handleReset();
@@ -364,6 +365,7 @@
           v-model:podTemplate="k8sTemplate.podTemplate"
           v-model:jmPodTemplate="k8sTemplate.jmPodTemplate"
           v-model:tmPodTemplate="k8sTemplate.tmPodTemplate"
+          v-model:ingressTemplate="k8sTemplate.ingressTemplate"
         />
       </template>
       <template #args="{ model }">
