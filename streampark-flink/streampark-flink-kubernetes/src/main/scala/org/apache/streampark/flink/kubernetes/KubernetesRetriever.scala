@@ -23,16 +23,20 @@ import org.apache.streampark.flink.kubernetes.enums.FlinkK8sDeployMode
 import org.apache.streampark.flink.kubernetes.ingress.IngressController
 import org.apache.streampark.flink.kubernetes.model.ClusterKey
 
+import org.apache.commons.lang3.StringUtils
 import org.apache.flink.client.cli.ClientOptions
 import org.apache.flink.client.program.ClusterClient
 import org.apache.flink.configuration.{Configuration, DeploymentOptions, RestOptions}
 import org.apache.flink.kubernetes.KubernetesClusterDescriptor
 import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions
 import org.apache.flink.kubernetes.kubeclient.deployment.UdClusterClientServiceLoader
-import org.apache.flink.kubernetes.shaded.io.fabric8.kubernetes.client.{DefaultKubernetesClient, KubernetesClient, KubernetesClientException}
+import org.apache.flink.kubernetes.shaded.io.fabric8.kubernetes.client._
+import org.apache.flink.util.FileUtils
 import org.apache.hc.core5.util.Timeout
 
 import javax.annotation.Nullable
+
+import java.io.{File, IOException}
 
 import scala.util.{Failure, Success, Try}
 
@@ -48,10 +52,25 @@ object KubernetesRetriever extends Logger {
 
   private val DEPLOYMENT_LOST_TIME = collection.mutable.Map[String, Long]()
 
-  /** get new KubernetesClient */
-  @throws(classOf[KubernetesClientException])
-  def newK8sClient(): KubernetesClient = {
-    new DefaultKubernetesClient()
+  def newK8sClient(kubeConfigFile: String = null, namespace: String = null): KubernetesClient = {
+    val clientBuilder = new KubernetesClientBuilder
+    var config = Config.autoConfigure(null)
+    if (StringUtils.isNotBlank(kubeConfigFile)) {
+      try {
+        config = Config.fromKubeconfig(null, FileUtils.readFileUtf8(new File(kubeConfigFile)), null.asInstanceOf[String])
+      } catch {
+        case var7: IOException =>
+          val e = var7
+          throw new KubernetesClientException("Load kubernetes config failed.", e)
+      }
+    }
+    if (StringUtils.isNotBlank(namespace)) {
+      config.setNamespace(namespace)
+      clientBuilder.withConfig(config).build().adapt(classOf[NamespacedKubernetesClient])
+    } else {
+      clientBuilder.withConfig(config).build()
+    }
+
   }
 
   /** check connection of kubernetes cluster */
@@ -109,10 +128,10 @@ object KubernetesRetriever extends Logger {
    * @param deploymentName
    * deployment name
    */
-  def isDeploymentExists(namespace: String, deploymentName: String): Boolean = {
+  def isDeploymentExists(namespace: String, deploymentName: String, k8sConf: String): Boolean = {
 
     KubernetesRetriever
-      .newK8sClient()
+      .newK8sClient(k8sConf, namespace)
       .using(client => {
         client
           .apps()
@@ -156,7 +175,7 @@ object KubernetesRetriever extends Logger {
 
   /** retrieve flink jobManager rest url */
   def retrieveFlinkRestUrl(clusterKey: ClusterKey): Option[String] = {
-    if (this.isDeploymentExists(clusterKey.namespace, clusterKey.clusterId)) {
+    if (this.isDeploymentExists(clusterKey.namespace, clusterKey.clusterId, clusterKey.k8sConf)) {
       val client = KubernetesRetriever
         .newFinkClusterClient(clusterKey.clusterId, clusterKey.namespace, clusterKey.executeMode)
         .getOrElse(return None)

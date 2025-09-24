@@ -35,5 +35,6 @@ case class CancelRequest(
     withDrain: Boolean,
     savepointPath: String,
     nativeFormat: Boolean,
-    override val kubernetesNamespace: String = Constants.DEFAULT)
+    override val kubernetesNamespace: String = Constants.DEFAULT,
+    @Nullable k8sConf: String)
   extends SavepointRequestTrait

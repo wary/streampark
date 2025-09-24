@@ -57,7 +57,8 @@ case class SubmitRequest(
     @Nullable buildResult: BuildResult,
     @Nullable extraParameter: JavaMap[String, Any],
     @Nullable kubernetesNamespace: String,
-    @Nullable flinkRestExposedType: FlinkK8sRestExposedType) {
+    @Nullable flinkRestExposedType: FlinkK8sRestExposedType,
+    @Nullable k8sConf: String) {
 
   private[this] lazy val appProperties: Map[String, String] = getParameterMap(
     KEY_FLINK_PROPERTY_PREFIX)

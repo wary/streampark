@@ -33,6 +33,7 @@ case class TrackId(
     appId: JavaLong = null,
     jobId: String,
     groupId: String,
+    k8sConf: String,
     properties: Properties) {
 
   def isLegal: Boolean = {
@@ -50,10 +51,10 @@ case class TrackId(
   def isActive: Boolean = isLegal && Try(jobId.nonEmpty).getOrElse(false)
 
   /** covert to ClusterKey */
-  def toClusterKey: ClusterKey = ClusterKey(executeMode, namespace, clusterId)
+  def toClusterKey: ClusterKey = ClusterKey(executeMode, namespace, clusterId, k8sConf)
 
   override def hashCode(): Int = {
-    Utils.hashCode(executeMode, clusterId, namespace, appId, jobId, groupId, properties)
+    Utils.hashCode(executeMode, clusterId, namespace, appId, jobId, groupId, k8sConf, properties)
   }
 
   override def equals(obj: Any): Boolean = {
@@ -65,6 +66,7 @@ case class TrackId(
         this.appId == that.appId &&
         this.jobId == that.jobId &&
         this.groupId == that.groupId &&
+        this.k8sConf == that.k8sConf &&
         this.properties == that.properties
       case _ => false
     }
@@ -79,8 +81,9 @@ object TrackId {
       appId: Long,
       jobId: String,
       groupId: String,
+      kubeConf: String,
       properties: Properties): TrackId = {
-    this(FlinkK8sDeployMode.SESSION, namespace, clusterId, appId, jobId, groupId, properties)
+    this(FlinkK8sDeployMode.SESSION, namespace, clusterId, appId, jobId, groupId, kubeConf, properties)
   }
 
   def onApplication(
@@ -89,7 +92,8 @@ object TrackId {
       appId: Long,
       jobId: String = null,
       groupId: String,
+      kubeConf: String,
       properties: Properties): TrackId = {
-    this(FlinkK8sDeployMode.APPLICATION, namespace, clusterId, appId, jobId, groupId, properties)
+    this(FlinkK8sDeployMode.APPLICATION, namespace, clusterId, appId, jobId, groupId, kubeConf, properties)
   }
 }

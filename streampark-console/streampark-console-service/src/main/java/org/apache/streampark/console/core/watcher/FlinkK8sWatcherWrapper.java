@@ -127,7 +127,6 @@ public class FlinkK8sWatcherWrapper {
     public TrackId toTrackId(FlinkApplication app) {
         FlinkEnv flinkEnv = flinkEnvService.getById(app.getVersionId());
         Properties properties = flinkEnv.getFlinkConfig();
-
         Map<String, String> dynamicProperties = FlinkConfigurationUtils
             .extractDynamicPropertiesAsJava(app.getDynamicProperties());
         String archiveDir = dynamicProperties.get(JobManagerOptions.ARCHIVE_DIR.key());
@@ -141,6 +140,7 @@ public class FlinkK8sWatcherWrapper {
                 app.getId(),
                 app.getJobId(),
                 app.getTeamId().toString(),
+                app.getK8sConf(),
                 properties);
         } else if (FlinkDeployMode.isKubernetesSessionMode(app.getDeployMode())) {
             FlinkCluster flinkCluster = flinkClusterService.getById(app.getFlinkClusterId());
@@ -152,6 +152,7 @@ public class FlinkK8sWatcherWrapper {
                 app.getId(),
                 app.getJobId(),
                 app.getTeamId().toString(),
+                app.getK8sConf(),
                 properties);
         } else {
             throw new IllegalArgumentException("Illegal K8sExecuteMode, mode=" + app.getDeployMode());

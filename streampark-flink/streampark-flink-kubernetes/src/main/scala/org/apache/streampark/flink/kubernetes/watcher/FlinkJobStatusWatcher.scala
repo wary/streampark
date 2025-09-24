@@ -226,7 +226,8 @@ class FlinkJobStatusWatcher(conf: JobStatusWatcherConfig = JobStatusWatcherConfi
         case APPLICATION =>
           val deployExists = KubernetesRetriever.isDeploymentExists(
             trackId.namespace,
-            trackId.clusterId)
+            trackId.clusterId,
+            trackId.k8sConf)
           if (!deployExists) {
             watchController.endpoints.invalidate(trackId.toClusterKey)
             watchController.unWatching(trackId)
@@ -317,7 +318,8 @@ class FlinkJobStatusWatcher(conf: JobStatusWatcherConfig = JobStatusWatcherConfi
         // whether deployment exists on kubernetes cluster
         val deployExists = KubernetesRetriever.isDeploymentExists(
           trackId.namespace,
-          trackId.clusterId)
+          trackId.clusterId,
+          trackId.k8sConf)
 
         val isConnection = KubernetesDeploymentHelper.checkConnection()
 

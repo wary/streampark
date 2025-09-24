@@ -70,7 +70,8 @@ object KubernetesNativeSessionClient extends KubernetesNativeClientTrait with Lo
     val clusterKey = ClusterKey(
       FlinkK8sDeployMode.SESSION,
       submitRequest.kubernetesNamespace,
-      submitRequest.clusterId)
+      submitRequest.clusterId,
+      submitRequest.k8sConf)
     val jmRestUrl = KubernetesRetriever
       .retrieveFlinkRestUrl(clusterKey)
       .getOrElse(

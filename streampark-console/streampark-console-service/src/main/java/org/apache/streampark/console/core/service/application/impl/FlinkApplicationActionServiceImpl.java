@@ -36,7 +36,7 @@ import org.apache.streampark.common.util.HadoopUtils;
 import org.apache.streampark.console.base.exception.ApiAlertException;
 import org.apache.streampark.console.base.exception.ApplicationException;
 import org.apache.streampark.console.base.util.Tuple2;
-import org.apache.streampark.console.base.util.Tuple3;
+import org.apache.streampark.console.base.util.Tuple4;
 import org.apache.streampark.console.core.entity.ApplicationBuildPipeline;
 import org.apache.streampark.console.core.entity.ApplicationLog;
 import org.apache.streampark.console.core.entity.FlinkApplication;
@@ -226,7 +226,7 @@ public class FlinkApplicationActionServiceImpl
 
     @Override
     public void abort(Long id) {
-        FlinkApplication application = this.baseMapper.selectApp(id);
+        FlinkApplication application = this.applicationManageService.getApp(id);
         CompletableFuture<SubmitResponse> startFuture = startFutureMap.remove(id);
         CompletableFuture<CancelResponse> cancelFuture = cancelFutureMap.remove(id);
         if (application.isKubernetesModeJob()) {
@@ -300,10 +300,11 @@ public class FlinkApplicationActionServiceImpl
             properties.put(RestOptions.PORT.key(), activeAddress.getPort());
         }
 
-        Tuple3<String, String, FlinkK8sRestExposedType> clusterIdNamespace =
+        Tuple4<String, String, FlinkK8sRestExposedType, String> clusterIdNamespace =
             getNamespaceClusterId(application);
         String namespace = clusterIdNamespace.t1;
         String clusterId = clusterIdNamespace.t2;
+        String k8sConf = clusterIdNamespace.t4;
 
         CancelRequest cancelRequest =
             new CancelRequest(
@@ -317,7 +318,8 @@ public class FlinkApplicationActionServiceImpl
                 appParam.getDrain(),
                 customSavepoint,
                 appParam.getNativeFormat(),
-                namespace);
+                namespace,
+                k8sConf);
 
         final Date triggerTime = new Date();
         CompletableFuture<CancelResponse> cancelFuture =
@@ -384,7 +386,7 @@ public class FlinkApplicationActionServiceImpl
     @Override
     public void start(FlinkApplication appParam, boolean auto) throws Exception {
         // 1) check application
-        final FlinkApplication application = getById(appParam.getId());
+        final FlinkApplication application = applicationManageService.getApp(appParam.getId());
         AssertUtils.notNull(application);
         ApiAlertException.throwIfTrue(
             !application.isCanBeStart(), "[StreamPark] The application cannot be started repeatedly.");
@@ -445,11 +447,12 @@ public class FlinkApplicationActionServiceImpl
             StringUtils.isBlank(appParam.getArgs()) ? application.getArgs() : appParam.getArgs();
         String applicationArgs = variableService.replaceVariable(application.getTeamId(), args);
 
-        Tuple3<String, String, FlinkK8sRestExposedType> clusterIdNamespace =
+        Tuple4<String, String, FlinkK8sRestExposedType, String> clusterIdNamespace =
             getNamespaceClusterId(application);
         String k8sNamespace = clusterIdNamespace.t1;
         String k8sClusterId = clusterIdNamespace.t2;
         FlinkK8sRestExposedType exposedType = clusterIdNamespace.t3;
+        String k8sConf = clusterIdNamespace.t4;
 
         String dynamicProperties =
             StringUtils.isBlank(appParam.getDynamicProperties())
@@ -476,7 +479,8 @@ public class FlinkApplicationActionServiceImpl
                 buildResult,
                 extraParameter,
                 k8sNamespace,
-                exposedType);
+                exposedType,
+                k8sConf);
 
         CompletableFuture<SubmitResponse> future =
             CompletableFuture.supplyAsync(() -> FlinkClient.submit(submitRequest), executorService);
@@ -873,10 +877,11 @@ public class FlinkApplicationActionServiceImpl
             "[StreamPark] The flink cluster not running, please start it");
     }
 
-    private Tuple3<String, String, FlinkK8sRestExposedType> getNamespaceClusterId(
-                                                                                  FlinkApplication application) {
+    private Tuple4<String, String, FlinkK8sRestExposedType, String> getNamespaceClusterId(
+                                                                                          FlinkApplication application) {
         String clusterId = null;
         String k8sNamespace = null;
+        String k8sConf = null;
         FlinkK8sRestExposedType exposedType = null;
         switch (application.getDeployModeEnum()) {
             case YARN_APPLICATION:
@@ -888,6 +893,7 @@ public class FlinkApplicationActionServiceImpl
                 clusterId = application.getJobName();
                 k8sNamespace = application.getK8sNamespace();
                 exposedType = application.getK8sRestExposedTypeEnum();
+                k8sConf = application.getK8sConf();
                 break;
             case KUBERNETES_NATIVE_SESSION:
                 FlinkCluster cluster = flinkClusterService.getById(application.getFlinkClusterId());
@@ -899,10 +905,11 @@ public class FlinkApplicationActionServiceImpl
                 clusterId = cluster.getClusterId();
                 k8sNamespace = cluster.getK8sNamespace();
                 exposedType = cluster.getK8sRestExposedTypeEnum();
+                k8sConf = application.getK8sConf();
                 break;
             default:
                 break;
         }
-        return Tuple3.of(k8sNamespace, clusterId, exposedType);
+        return Tuple4.of(k8sNamespace, clusterId, exposedType, k8sConf);
     }
 }

@@ -24,7 +24,8 @@ import org.apache.streampark.flink.kubernetes.enums.FlinkK8sDeployMode
 case class ClusterKey(
     executeMode: FlinkK8sDeployMode.Value,
     namespace: String = "default",
-    clusterId: String) {
+    clusterId: String,
+    k8sConf: String) {
 
   override def toString: String = executeMode.toString + namespace + clusterId
 
@@ -45,5 +46,5 @@ case class ClusterKey(
 
 object ClusterKey {
   def of(trackId: TrackId): ClusterKey =
-    ClusterKey(trackId.executeMode, trackId.namespace, trackId.clusterId)
+    ClusterKey(trackId.executeMode, trackId.namespace, trackId.clusterId, trackId.k8sConf)
 }
