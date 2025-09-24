@@ -306,7 +306,6 @@ class FlinkJobStatusWatcher(conf: JobStatusWatcherConfig = JobStatusWatcherConfi
    * application-mode job inference in case of a failed JM rest request.
    */
   private def inferStateFromK8sEvent(@Nonnull trackId: TrackId)(implicit pollEmitTime: Long): Option[JobStatusCV] = {
-
     // infer from k8s deployment and event
     val latest: JobStatusCV = watchController.jobStatuses.get(trackId)
     val jobState = trackId match {
@@ -315,36 +314,37 @@ class FlinkJobStatusWatcher(conf: JobStatusWatcherConfig = JobStatusWatcherConfi
         watchController.trackIds.invalidate(id)
         FlinkJobState.CANCELED
       case _ =>
-        // whether deployment exists on kubernetes cluster
-        val deployExists = KubernetesRetriever.isDeploymentExists(
-          trackId.namespace,
-          trackId.clusterId,
-          trackId.k8sConf)
-
-        val isConnection = KubernetesDeploymentHelper.checkConnection()
-
-        if (deployExists) {
-          val deployError = KubernetesDeploymentHelper.isDeploymentError(
+        val isConnection = KubernetesDeploymentHelper.checkConnection(trackId.k8sConf)
+        if (!isConnection) {
+          inferFromPreCache(latest)
+        } else {
+          // whether deployment exists on kubernetes cluster
+          val deployExists = KubernetesRetriever.isDeploymentExists(
             trackId.namespace,
-            trackId.clusterId)
-          if (!deployError) {
-            logger.info("Task Enter the initialization process.")
-            FlinkJobState.K8S_INITIALIZING
-          } else if (isConnection) {
-            logger.info("Enter the task failure deletion process.")
-            KubernetesDeploymentHelper.watchPodTerminatedLog(
+            trackId.clusterId,
+            trackId.k8sConf)
+          if (deployExists) {
+            val deployError = KubernetesDeploymentHelper.isDeploymentError(
               trackId.namespace,
               trackId.clusterId,
-              trackId.jobId)
-            FlinkJobState.FAILED
+              trackId.k8sConf)
+            if (!deployError) {
+              logger.info("Task Enter the initialization process.")
+              FlinkJobState.K8S_INITIALIZING
+            } else {
+              logger.info("Enter the task failure deletion process.")
+              KubernetesDeploymentHelper.watchPodTerminatedLog(
+                trackId.namespace,
+                trackId.clusterId,
+                trackId.jobId,
+                trackId.k8sConf)
+              KubernetesDeploymentHelper.delete(trackId.namespace, trackId.clusterId, trackId.k8sConf)
+              FlinkJobState.FAILED
+            }
           } else {
-            inferFromPreCache(latest)
+            logger.info("The deployment is deleted and enters the task failure process.")
+            FlinkJobState.of(FlinkHistoryArchives.getJobStateFromArchiveFile(trackId))
           }
-        } else if (isConnection) {
-          logger.info("The deployment is deleted and enters the task failure process.")
-          FlinkJobState.of(FlinkHistoryArchives.getJobStateFromArchiveFile(trackId))
-        } else {
-          inferFromPreCache(latest)
         }
     }
 
