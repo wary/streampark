@@ -283,12 +283,14 @@ export function handleSubmitParams(
     description: values.description,
     k8sNamespace: values.k8sNamespace || null,
     serviceAccount: values.serviceAccount || null,
+    k8sConf: values.k8sConf || null,
     clusterId: values.clusterId || null,
     flinkClusterId: getFlinkClusterId(values),
     flinkImage: values.flinkImage || null,
   });
   if (params.deployMode == DeployMode.KUBERNETES_APPLICATION) {
     Object.assign(params, {
+      k8sConf: values.k8sConf,
       serviceAccount: values.serviceAccount,
       k8sPodTemplate: k8sTemplate.podTemplate,
       k8sJmPodTemplate: k8sTemplate.jmPodTemplate,

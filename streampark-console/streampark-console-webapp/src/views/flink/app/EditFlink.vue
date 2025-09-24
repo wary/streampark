@@ -105,6 +105,7 @@
         flinkImage: app.flinkImage,
         k8sNamespace: app.k8sNamespace,
         serviceAccount: app.serviceAccount,
+        k8sConf: app.k8sConf,
         alertId: selectAlertId,
         projectName: app.projectName,
         module: app.module,

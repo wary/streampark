@@ -254,6 +254,17 @@ export const useCreateAndEditSchema = (
           }),
       },
       {
+        field: 'k8sConf',
+        label: t('setting.flinkCluster.form.k8sConf'),
+        component: 'Input',
+        ifShow: ({ values }) => values.deployMode == DeployMode.KUBERNETES_APPLICATION,
+        render: ({ model, field }) =>
+          renderInputDropdown(model, field, {
+            placeholder: t('flink.app.addAppTips.k8sConfPlaceholder'),
+            options: unref(historyRecord)?.k8sConf || [],
+          }),
+      },
+      {
         field: 'flinkImage',
         label: t('flink.app.flinkBaseDockerImage'),
         component: 'Input',
@@ -604,6 +615,9 @@ export const useCreateAndEditSchema = (
     });
     fetchServiceAccount().then((res) => {
       historyRecord.serviceAccount = res;
+    });
+    fetchK8sConf().then((res) => {
+      historyRecord.k8sConf = res;
     });
     fetchSessionClusterIds({ deployMode: DeployMode.KUBERNETES_SESSION }).then((res) => {
       historyRecord.k8sSessionClusterId = res;

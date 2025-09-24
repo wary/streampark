@@ -57,6 +57,7 @@ export interface AppListRecord {
   flinkImage?: string;
   k8sNamespace: string;
   serviceAccount: string;
+  k8sConf: string;
   state: number;
   release: number;
   build: boolean;
@@ -179,6 +180,7 @@ export interface CreateParams {
   description: string;
   k8sNamespace?: any;
   serviceAccount?: any;
+  k8sConf?: any;
   clusterId: string;
   flinkClusterId: string;
   flinkImage?: any;

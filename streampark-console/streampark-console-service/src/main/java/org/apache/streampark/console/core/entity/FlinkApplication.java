@@ -40,6 +40,7 @@ import org.apache.streampark.flink.packer.maven.DependencyInfo;
 
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions;
 
 import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.IdType;
@@ -125,6 +126,7 @@ public class FlinkApplication extends BaseEntity {
     private String k8sPodTemplate;
 
     private String k8sJmPodTemplate;
+
     private String k8sTmPodTemplate;
 
     @Getter
@@ -302,6 +304,7 @@ public class FlinkApplication extends BaseEntity {
     private transient String backUpDescription;
     private transient String yarnQueue;
     private transient String serviceAccount;
+    private transient String k8sConf;
 
     /**
      * Flink Web UI Url
@@ -629,6 +632,9 @@ public class FlinkApplication extends BaseEntity {
         if (deployModeEnum == FlinkDeployMode.KUBERNETES_NATIVE_APPLICATION) {
             if (StringUtils.isNotBlank(appParam.getServiceAccount())) {
                 hotParams.put(ConfigKeys.KEY_KERBEROS_SERVICE_ACCOUNT(), appParam.getServiceAccount());
+            }
+            if (StringUtils.isNotBlank(appParam.getK8sConf())) {
+                hotParams.put(KubernetesConfigOptions.KUBE_CONFIG_FILE.key(), appParam.getK8sConf());
             }
         }
         if (!hotParams.isEmpty()) {

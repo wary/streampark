@@ -64,6 +64,7 @@ import org.apache.streampark.flink.packer.pipeline.PipelineStatusEnum;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
@@ -281,7 +282,7 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
                     // in time.
                     if (record.isKubernetesModeJob()) {
                         // set duration
-                        fillK8sAppProperties(record);
+                        extractK8sModeAttributes(record);
                     }
                     if (pipeStates.containsKey(record.getId())) {
                         record.setBuildStatus(pipeStates.get(record.getId()).getCode());
@@ -538,6 +539,8 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         application.setFlinkImage(appParam.getFlinkImage());
         application.setK8sNamespace(appParam.getK8sNamespace());
         application.setServiceAccount(application.getServiceAccount());
+        application.setIngressTemplate(application.getIngressTemplate());
+        application.setK8sConf(application.getK8sConf());
         application.updateHotParams(appParam);
         application.setK8sRestExposedType(appParam.getK8sRestExposedType());
         application.setK8sPodTemplate(appParam.getK8sPodTemplate());
@@ -758,7 +761,7 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         }
         // add flink web url info for k8s-mode
         if (application.isKubernetesModeJob()) {
-            fillK8sAppProperties(application);
+            extractK8sModeAttributes(application);
         }
 
         application.setYarnQueueByHotParams();
@@ -767,7 +770,7 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         return application;
     }
 
-    private void fillK8sAppProperties(FlinkApplication application) {
+    private void extractK8sModeAttributes(FlinkApplication application) {
         String restUrl = k8SFlinkTrackMonitor.getRemoteRestUrl(k8sWatcherWrapper.toTrackId(application));
         application.setFlinkRestUrl(restUrl);
 
@@ -775,6 +778,12 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         if (serviceAccount != null) {
             application.setServiceAccount(serviceAccount.toString());
         }
+
+        Object kubeConfig = application.getHotParamsMap().get(KubernetesConfigOptions.KUBE_CONFIG_FILE.key());
+        if (kubeConfig != null) {
+            application.setK8sConf(kubeConfig.toString());
+        }
+
         // set duration
         long now = System.currentTimeMillis();
         setAppDurationIfNeeded(application, now);
