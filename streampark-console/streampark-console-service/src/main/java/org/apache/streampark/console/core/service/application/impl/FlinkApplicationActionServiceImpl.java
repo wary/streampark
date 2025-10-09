@@ -526,7 +526,8 @@ public class FlinkApplicationActionServiceImpl
             flinkApplication.setJobId(response.jobId());
         }
 
-        if (FlinkDeployMode.isYarnMode(flinkApplication.getDeployMode())) {
+        if (FlinkDeployMode.isYarnMode(flinkApplication.getDeployMode())
+            || FlinkDeployMode.isKubernetesMode(flinkApplication.getDeployMode())) {
             flinkApplication.setClusterId(response.clusterId());
             applicationLog.setClusterId(response.clusterId());
         }
@@ -555,23 +556,6 @@ public class FlinkApplicationActionServiceImpl
     private void processForK8sApp(FlinkApplication application, ApplicationLog applicationLog) {
         application.setRelease(ReleaseStateEnum.DONE.get());
         k8SFlinkTrackMonitor.doWatching(k8sWatcherWrapper.toTrackId(application));
-        if (!FlinkDeployMode.isKubernetesApplicationMode(application.getDeployMode())) {
-            return;
-        }
-        String domainName = settingService.getIngressModeDefault();
-        if (StringUtils.isNotBlank(domainName)) {
-            try {
-                IngressController.configureIngress(
-                    domainName, application.getClusterId(), application.getK8sNamespace());
-            } catch (KubernetesClientException e) {
-                log.info("Failed to create ingress, stack info:{}", e.getMessage());
-                applicationLog.setException(e.getMessage());
-                applicationLog.setSuccess(false);
-                applicationLogService.save(applicationLog);
-                application.setState(FlinkAppStateEnum.FAILED.getValue());
-                application.setOptionState(OptionStateEnum.NONE.getValue());
-            }
-        }
     }
 
     private void processForException(
@@ -777,6 +761,9 @@ public class FlinkApplicationActionServiceImpl
         } else if (FlinkDeployMode.isKubernetesMode(application.getDeployModeEnum())) {
             properties.put(ConfigKeys.KEY_K8S_IMAGE_PULL_POLICY(), "Always");
             properties.putAll(application.getHotParamsMap());
+            if (StringUtils.isNotBlank(settingService.getIngressModeDefault())) {
+                properties.putIfAbsent(ConfigKeys.STREAMPARK_INGRESS_MODE(), settingService.getIngressModeDefault());
+            }
         }
 
         if (FlinkDeployMode.isKubernetesApplicationMode(application.getDeployMode())) {
