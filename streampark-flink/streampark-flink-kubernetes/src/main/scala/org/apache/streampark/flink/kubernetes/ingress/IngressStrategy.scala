@@ -20,23 +20,12 @@ package org.apache.streampark.flink.kubernetes.ingress
 import org.apache.streampark.common.conf.{ConfigKeys, InternalConfigHolder, K8sFlinkConfig}
 import org.apache.streampark.common.util.FileUtils
 
-import org.apache.flink.configuration.Configuration
 import org.apache.flink.kubernetes.shaded.io.fabric8.kubernetes.api.model.{OwnerReference, OwnerReferenceBuilder}
 import org.apache.flink.kubernetes.shaded.io.fabric8.kubernetes.client.KubernetesClient
 
 import java.io.File
 
-trait IngressStrategy {
-
-  val REST_SERVICE_IDENTIFICATION = "rest"
-
-  lazy val ingressClass: String = InternalConfigHolder.get[String](K8sFlinkConfig.ingressClass)
-
-  def getIngressUrl(nameSpace: String, clusterId: String, flinkConfig: Configuration): Option[String]
-
-  def configureIngress(domainName: String, clusterId: String, nameSpace: String, flinkConfig: Configuration): String
-
-  def deleteIngress(clusterId: String, nameSpace: String, flinkConfig: Configuration)
+object IngressStrategy {
 
   def prepareIngressTemplateFiles(buildWorkspace: String, ingressTemplates: String): String = {
     val workspaceDir = new File(buildWorkspace)
@@ -49,6 +38,20 @@ trait IngressStrategy {
       outputPath
     }
   }
+
+}
+
+trait IngressStrategy {
+
+  val REST_SERVICE_IDENTIFICATION = "rest"
+
+  lazy val ingressClass: String = InternalConfigHolder.get[String](K8sFlinkConfig.ingressClass)
+
+  def getIngressUrl(nameSpace: String, clusterId: String, k8sClient: KubernetesClient): Option[String]
+
+  def configureIngress(domainName: String, clusterId: String, nameSpace: String, k8sClient: KubernetesClient): String
+
+  def deleteIngress(clusterId: String, nameSpace: String, k8sClient: KubernetesClient)
 
   def buildIngressAnnotations(clusterId: String, namespace: String): Map[String, String] = {
     Map(

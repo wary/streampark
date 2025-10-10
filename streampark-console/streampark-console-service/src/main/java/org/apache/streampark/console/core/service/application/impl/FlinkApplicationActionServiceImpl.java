@@ -227,7 +227,8 @@ public class FlinkApplicationActionServiceImpl
         CompletableFuture<CancelResponse> cancelFuture = cancelFutureMap.remove(id);
         if (application.isKubernetesModeJob()) {
             KubernetesDeploymentHelper.watchPodTerminatedLog(
-                application.getK8sNamespace(), application.getJobName(), application.getJobId());
+                application.getK8sNamespace(), application.getJobName(), application.getJobId(),
+                application.getK8sConf());
         }
         if (startFuture != null) {
             startFuture.cancel(true);
@@ -472,7 +473,8 @@ public class FlinkApplicationActionServiceImpl
                 buildResult,
                 extraParameter,
                 k8sNamespace,
-                exposedType);
+                exposedType,
+                application.getK8sConf());
 
         CompletableFuture<SubmitResponse> future =
             CompletableFuture.supplyAsync(() -> FlinkClient.submit(submitRequest), executorService);

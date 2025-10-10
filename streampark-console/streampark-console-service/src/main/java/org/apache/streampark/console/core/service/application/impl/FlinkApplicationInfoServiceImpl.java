@@ -373,7 +373,8 @@ public class FlinkApplicationInfoServiceImpl extends ServiceImpl<FlinkApplicatio
             () -> KubernetesDeploymentHelper.watchDeploymentLog(
                 application.getK8sNamespace(),
                 application.getJobName(),
-                application.getJobId()));
+                application.getJobId(),
+                application.getK8sConf()));
 
         return future
             .exceptionally(

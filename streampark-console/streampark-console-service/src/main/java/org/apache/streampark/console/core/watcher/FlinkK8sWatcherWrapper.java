@@ -141,6 +141,7 @@ public class FlinkK8sWatcherWrapper {
                 app.getId(),
                 app.getJobId(),
                 app.getTeamId().toString(),
+                app.getK8sConf(),
                 properties);
         } else if (FlinkDeployMode.isKubernetesSessionMode(app.getDeployMode())) {
             FlinkCluster flinkCluster = flinkClusterService.getById(app.getFlinkClusterId());
@@ -152,6 +153,7 @@ public class FlinkK8sWatcherWrapper {
                 app.getId(),
                 app.getJobId(),
                 app.getTeamId().toString(),
+                app.getK8sConf(),
                 properties);
         } else {
             throw new IllegalArgumentException("Illegal K8sExecuteMode, mode=" + app.getDeployMode());

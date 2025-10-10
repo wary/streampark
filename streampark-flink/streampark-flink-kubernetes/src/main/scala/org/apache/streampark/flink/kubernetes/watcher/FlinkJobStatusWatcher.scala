@@ -228,7 +228,8 @@ class FlinkJobStatusWatcher(conf: JobStatusWatcherConfig = JobStatusWatcherConfi
         case APPLICATION =>
           val deployExists = KubernetesRetriever.isDeploymentExists(
             trackId.namespace,
-            trackId.clusterId)
+            trackId.clusterId,
+            trackId.k8sConf)
           if (!deployExists) {
             watchController.endpoints.invalidate(trackId.toClusterKey)
             watchController.unWatching(trackId)
@@ -318,14 +319,16 @@ class FlinkJobStatusWatcher(conf: JobStatusWatcherConfig = JobStatusWatcherConfi
         // whether deployment exists on kubernetes cluster
         val deployExists = KubernetesRetriever.isDeploymentExists(
           trackId.namespace,
-          trackId.clusterId)
+          trackId.clusterId,
+          trackId.k8sConf)
 
-        val isConnection = KubernetesDeploymentHelper.checkConnection()
+        val isConnection = KubernetesDeploymentHelper.checkConnection(trackId.k8sConf)
 
         if (deployExists) {
           val deployError = KubernetesDeploymentHelper.isDeploymentError(
             trackId.namespace,
-            trackId.clusterId)
+            trackId.clusterId,
+            trackId.k8sConf)
           if (!deployError) {
             logger.info("Task Enter the initialization process.")
             FlinkJobState.K8S_INITIALIZING
@@ -334,7 +337,8 @@ class FlinkJobStatusWatcher(conf: JobStatusWatcherConfig = JobStatusWatcherConfi
             KubernetesDeploymentHelper.watchPodTerminatedLog(
               trackId.namespace,
               trackId.clusterId,
-              trackId.jobId)
+              trackId.jobId,
+              trackId.k8sConf)
             FlinkJobState.FAILED
           } else {
             inferFromPreCache(latest)

@@ -19,8 +19,6 @@ package org.apache.streampark.flink.kubernetes.ingress
 
 import org.apache.streampark.common.util.Implicits._
 
-import org.apache.flink.configuration.Configuration
-import org.apache.flink.kubernetes.kubeclient.FlinkKubeClientFactory
 import org.apache.flink.kubernetes.shaded.io.fabric8.kubernetes.api.model.networking.v1.{Ingress, IngressBuilder}
 import org.apache.flink.kubernetes.shaded.io.fabric8.kubernetes.client.KubernetesClient
 
@@ -31,27 +29,25 @@ class IngressStrategyV1 extends IngressStrategy {
   override def getIngressUrl(
       nameSpace: String,
       clusterId: String,
-      flinkConfig: Configuration): Option[String] = {
-    val kubernetesClient = FlinkKubeClientFactory.getInstance.createFabric8ioKubernetesClient(flinkConfig)
-    kubernetesClient.using(client =>
-      Try {
-        Option(
-          Try(
-            client.network.v1
-              .ingresses()
-              .inNamespace(nameSpace)
-              .withName(clusterId)
-              .get())
-            .getOrElse(null)) match {
-          case Some(ingress) =>
-            extractIngressURL(ingress)
-          case None => Option.empty[String]
-        }
-      } match {
-        case Success(value) => value
-        case Failure(e) =>
-          throw new RuntimeException(s"[StreamPark] get ingressUrlAddress error: $e")
-      })
+      k8sClient: KubernetesClient): Option[String] = {
+    Try {
+      Option(
+        Try(
+          k8sClient.network.v1
+            .ingresses()
+            .inNamespace(nameSpace)
+            .withName(clusterId)
+            .get())
+          .getOrElse(null)) match {
+        case Some(ingress) =>
+          extractIngressURL(ingress)
+        case None => Option.empty[String]
+      }
+    } match {
+      case Success(value) => value
+      case Failure(e) =>
+        throw new RuntimeException(s"[StreamPark] get ingressUrlAddress error: $e")
+    }
   }
 
   private[this] def touchIngressBackendRestPort(
@@ -69,55 +65,52 @@ class IngressStrategyV1 extends IngressStrategy {
     ports.map(servicePort => servicePort.getTargetPort.getIntVal).head
   }
 
-  override def configureIngress(domainName: String, clusterId: String, nameSpace: String, flinkConfig: Configuration): String = {
-    val kubernetesClient = FlinkKubeClientFactory.getInstance.createFabric8ioKubernetesClient(flinkConfig)
-    kubernetesClient.using(client => {
-      val ownerReference = getOwnerReference(nameSpace, clusterId, client)
-      val ingressBackendRestServicePort =
-        touchIngressBackendRestPort(client, clusterId, nameSpace)
-      val ingress = new IngressBuilder()
-        .withNewMetadata()
-        .withName(clusterId)
-        .addToAnnotations(buildIngressAnnotations(clusterId, nameSpace))
-        .addToLabels(buildIngressLabels(clusterId))
-        .addToOwnerReferences(ownerReference) // Add OwnerReference
-        .endMetadata()
-        .withNewSpec()
-        .withIngressClassName(ingressClass)
-        .addNewRule()
-        .withHost(domainName)
-        .withNewHttp()
-        .addNewPath()
-        .withPath(s"/$nameSpace/$clusterId/")
-        .withPathType("ImplementationSpecific")
-        .withNewBackend()
-        .withNewService()
-        .withName(s"$clusterId-$REST_SERVICE_IDENTIFICATION")
-        .withNewPort()
-        .withNumber(ingressBackendRestServicePort)
-        .endPort()
-        .endService()
-        .endBackend()
-        .endPath()
-        .addNewPath()
-        .withPath(s"/$nameSpace/$clusterId" + "(/|$)(.*)")
-        .withPathType("ImplementationSpecific")
-        .withNewBackend()
-        .withNewService()
-        .withName(s"$clusterId-$REST_SERVICE_IDENTIFICATION")
-        .withNewPort()
-        .withNumber(ingressBackendRestServicePort)
-        .endPort()
-        .endService()
-        .endBackend()
-        .endPath()
-        .endHttp()
-        .endRule()
-        .endSpec()
-        .build()
-      client.network.v1.ingresses().inNamespace(nameSpace).createOrReplace(ingress)
-      extractIngressURL(ingress).get
-    })
+  override def configureIngress(domainName: String, clusterId: String, nameSpace: String, k8sClient: KubernetesClient): String = {
+    val ownerReference = getOwnerReference(nameSpace, clusterId, k8sClient)
+    val ingressBackendRestServicePort =
+      touchIngressBackendRestPort(k8sClient, clusterId, nameSpace)
+    val ingress = new IngressBuilder()
+      .withNewMetadata()
+      .withName(clusterId)
+      .addToAnnotations(buildIngressAnnotations(clusterId, nameSpace))
+      .addToLabels(buildIngressLabels(clusterId))
+      .addToOwnerReferences(ownerReference) // Add OwnerReference
+      .endMetadata()
+      .withNewSpec()
+      .withIngressClassName(ingressClass)
+      .addNewRule()
+      .withHost(domainName)
+      .withNewHttp()
+      .addNewPath()
+      .withPath(s"/$nameSpace/$clusterId/")
+      .withPathType("ImplementationSpecific")
+      .withNewBackend()
+      .withNewService()
+      .withName(s"$clusterId-$REST_SERVICE_IDENTIFICATION")
+      .withNewPort()
+      .withNumber(ingressBackendRestServicePort)
+      .endPort()
+      .endService()
+      .endBackend()
+      .endPath()
+      .addNewPath()
+      .withPath(s"/$nameSpace/$clusterId" + "(/|$)(.*)")
+      .withPathType("ImplementationSpecific")
+      .withNewBackend()
+      .withNewService()
+      .withName(s"$clusterId-$REST_SERVICE_IDENTIFICATION")
+      .withNewPort()
+      .withNumber(ingressBackendRestServicePort)
+      .endPort()
+      .endService()
+      .endBackend()
+      .endPath()
+      .endHttp()
+      .endRule()
+      .endSpec()
+      .build()
+    k8sClient.network.v1.ingresses().inNamespace(nameSpace).createOrReplace(ingress)
+    extractIngressURL(ingress).get
   }
 
   private def extractIngressURL(ingress: Ingress): Option[String] = {
@@ -129,19 +122,17 @@ class IngressStrategyV1 extends IngressStrategy {
       }
   }
 
-  override def deleteIngress(clusterId: String, nameSpace: String, flinkConfig: Configuration): Unit = {
-    val kubernetesClient = FlinkKubeClientFactory.getInstance.createFabric8ioKubernetesClient(flinkConfig)
-    kubernetesClient.using(client =>
-      Try {
-        client.network.v1
-          .ingresses()
-          .inNamespace(nameSpace)
-          .withName(clusterId)
-          .delete()
-      } match {
-        case Success(value) => value
-        case Failure(e) =>
-          throw new RuntimeException(s"[StreamPark] delete ingress error: $e")
-      })
+  override def deleteIngress(clusterId: String, nameSpace: String, k8sClient: KubernetesClient): Unit = {
+    Try {
+      k8sClient.network.v1
+        .ingresses()
+        .inNamespace(nameSpace)
+        .withName(clusterId)
+        .delete()
+    } match {
+      case Failure(e) =>
+        throw new RuntimeException(s"[StreamPark] delete ingress error: $e")
+      case _ =>
+    }
   }
 }
