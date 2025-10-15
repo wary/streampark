@@ -771,6 +771,8 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
             fillPropsForK8SModeJob(application);
         }
 
+        application.setAppControl(getAppControl(application));
+
         application.setYarnQueueByHotParams();
 
         return application;

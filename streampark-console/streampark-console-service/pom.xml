@@ -276,7 +276,7 @@
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <optional>true</optional>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>

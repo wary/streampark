@@ -31,7 +31,6 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import javax.servlet.Filter;
 
-import java.net.URI;
 import java.util.LinkedHashMap;
 
 @Component
@@ -49,6 +48,9 @@ public class SsoShiroPlugin {
     @Value("${sso.enable:#{false}}")
     private Boolean ssoEnable;
 
+    @Value("${sso.callbackUrl}")
+    private String callbackUrl;
+
     @PostConstruct
     public void init() {
         // Make sso controller anon if it's not enabled
@@ -59,6 +61,8 @@ public class SsoShiroPlugin {
             shiroService.addFilterChains(filterChainDefinitionMap);
             return;
         }
+
+        // ssoConfig.setClients(new Clients(callbackUrl, ));
 
         // Add Pac4jRealm into shiro
         shiroService.addRealm(new Pac4jRealm());
@@ -72,8 +76,8 @@ public class SsoShiroPlugin {
         filterChainDefinitionMap.put("/sso/token", "ssoSecurityFilter");
         filterChainDefinitionMap.put("/pac4jLogout", "ssoLogoutFilter");
         // Get callback endpoint from callbackUrl
-        String callbackEndpoint = URI.create(ssoConfig.getClients().getCallbackUrl()).getPath();
-        filterChainDefinitionMap.put(callbackEndpoint, "ssoCallbackFilter");
+        // String callbackEndpoint = URI.create(ssoConfig.getClients().getCallbackUrl()).getPath();
+        filterChainDefinitionMap.put(callbackUrl, "ssoCallbackFilter");
         shiroService.addFilterChains(filterChainDefinitionMap);
     }
 

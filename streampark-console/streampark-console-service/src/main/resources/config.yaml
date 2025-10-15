@@ -79,7 +79,7 @@ security:
 # sign streampark with ldap.
 ldap:
     base-dn: dc=streampark,dc=com  # Login Account
-    enable: false  # ldap enabled'
+    enable: true  # ldap enabled'
     username: cn=Manager,dc=streampark,dc=com
     password: streampark
     urls: ldap://99.99.99.99:389 #AD server IP, default port 389
