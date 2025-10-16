@@ -17,22 +17,6 @@
 
 package org.apache.streampark.console.core.service.impl;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.net.URI;
-import java.security.PrivilegedExceptionAction;
-import java.util.Enumeration;
-import javax.annotation.Nonnull;
-import javax.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.streampark.common.util.HadoopConfigUtils;
 import org.apache.streampark.common.util.HadoopUtils;
 import org.apache.streampark.common.util.YarnUtils;
@@ -44,6 +28,17 @@ import org.apache.streampark.console.core.service.FlinkClusterService;
 import org.apache.streampark.console.core.service.ProxyService;
 import org.apache.streampark.console.core.watcher.FlinkK8sWatcherWrapper;
 import org.apache.streampark.flink.kubernetes.FlinkK8sWatcher;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
@@ -57,6 +52,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+
+import javax.annotation.Nonnull;
+import javax.servlet.http.HttpServletRequest;
+
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.URI;
+import java.security.PrivilegedExceptionAction;
+import java.util.Enumeration;
 
 @Slf4j
 @Service
@@ -241,7 +245,7 @@ public class ProxyServiceImpl implements ProxyService {
     }
 
     private ResponseEntity<?> proxy(
-        HttpServletRequest request, String url, HttpEntity<?> requestEntity) {
+                                    HttpServletRequest request, String url, HttpEntity<?> requestEntity) {
         try {
             return proxyRestTemplate.exchange(
                 url, HttpMethod.valueOf(request.getMethod()), requestEntity, byte[].class);

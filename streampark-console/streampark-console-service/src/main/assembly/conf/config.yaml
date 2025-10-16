@@ -91,7 +91,7 @@ ldap:
 
 sso:
     enable: false
-    callbackUrl: http://localhost:10000/callback
+    callbackUrl: http://localhost:10000/callback/openid
     # Put all parameters under `properties`
     # Check supported sso config parameters for different authentication clients from the below link
     # https://github.com/pac4j/pac4j/blob/master/documentation/docs/config-module.md

@@ -17,11 +17,14 @@
 
 package org.apache.streampark.console.system.authentication;
 
+import org.apache.streampark.console.system.openid.OpenIdClient;
+
 import io.buji.pac4j.filter.CallbackFilter;
 import io.buji.pac4j.filter.LogoutFilter;
 import io.buji.pac4j.filter.SecurityFilter;
 import io.buji.pac4j.realm.Pac4jRealm;
 import lombok.extern.slf4j.Slf4j;
+import org.pac4j.core.client.Clients;
 import org.pac4j.core.config.Config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +34,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import javax.servlet.Filter;
 
+import java.net.URI;
 import java.util.LinkedHashMap;
 
 @Component
@@ -39,17 +43,17 @@ import java.util.LinkedHashMap;
 /** Plugin for {@link ShiroConfig.java} to load SSO config if enabled */
 public class SsoShiroPlugin {
 
+    @Value("${sso.enable:#{false}}")
+    private Boolean ssoEnable;
+
     @Autowired
     private Config ssoConfig;
 
     @Autowired
     private ShiroService shiroService;
 
-    @Value("${sso.enable:#{false}}")
-    private Boolean ssoEnable;
-
-    @Value("${sso.callbackUrl}")
-    private String callbackUrl;
+    @Autowired
+    private OpenIdClient openIdClient;
 
     @PostConstruct
     public void init() {
@@ -62,10 +66,9 @@ public class SsoShiroPlugin {
             return;
         }
 
-        // ssoConfig.setClients(new Clients(callbackUrl, ));
-
         // Add Pac4jRealm into shiro
         shiroService.addRealm(new Pac4jRealm());
+        ssoConfig.setClients(new Clients(openIdClient.getCallbackUrl(), openIdClient));
 
         // Construct the shiro filter for SSO
         constructShiroFilterForSSO();
@@ -76,8 +79,8 @@ public class SsoShiroPlugin {
         filterChainDefinitionMap.put("/sso/token", "ssoSecurityFilter");
         filterChainDefinitionMap.put("/pac4jLogout", "ssoLogoutFilter");
         // Get callback endpoint from callbackUrl
-        // String callbackEndpoint = URI.create(ssoConfig.getClients().getCallbackUrl()).getPath();
-        filterChainDefinitionMap.put(callbackUrl, "ssoCallbackFilter");
+        String callbackEndpoint = URI.create(ssoConfig.getClients().getCallbackUrl()).getPath();
+        filterChainDefinitionMap.put(callbackEndpoint, "ssoCallbackFilter");
         shiroService.addFilterChains(filterChainDefinitionMap);
     }
 
