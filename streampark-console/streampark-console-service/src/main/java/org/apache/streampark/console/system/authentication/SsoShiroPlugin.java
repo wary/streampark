@@ -76,6 +76,7 @@ public class SsoShiroPlugin {
         // Construct the filterChainDefinitionMap for SSO
         LinkedHashMap<String, String> filterChainDefinitionMap = new LinkedHashMap<>();
         filterChainDefinitionMap.put("/sso/signin", "ssoSecurityFilter");
+        filterChainDefinitionMap.put("/undefined/sso/signin", "ssoSecurityFilter");
         filterChainDefinitionMap.put("/sso/token", "ssoSecurityFilter");
         filterChainDefinitionMap.put("/pac4jLogout", "ssoLogoutFilter");
         // Get callback endpoint from callbackUrl

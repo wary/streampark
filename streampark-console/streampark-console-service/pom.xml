@@ -74,6 +74,14 @@
     </dependencyManagement>
 
     <dependencies>
+
+        <!--net ease-->
+        <dependency>
+            <groupId>com.netease.music.da</groupId>
+            <artifactId>mammut-api-sdk</artifactId>
+            <version>2.6.0</version>
+        </dependency>
+
         <!--scala-->
         <dependency>
             <groupId>org.scala-lang</groupId>

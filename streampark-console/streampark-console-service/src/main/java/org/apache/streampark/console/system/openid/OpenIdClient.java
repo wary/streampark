@@ -18,6 +18,7 @@
 package org.apache.streampark.console.system.openid;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.streampark.console.system.service.CorpUserService;
 import org.pac4j.core.config.Config;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
@@ -40,6 +41,9 @@ public class OpenIdClient extends OidcClient {
     @Autowired
     private Config ssoConfig;
 
+    @Autowired
+    private CorpUserService corpUserService;
+
     public OpenIdClient() {
         this.setName("crop");
     }
@@ -55,6 +59,7 @@ public class OpenIdClient extends OidcClient {
         this.getConfiguration().setDiscoveryURI("https://login.netease.com/connect/.well-known/openid-configuration");
         this.getConfiguration().setClientId(clientId);
         this.getConfiguration().setSecret(secret);
+        this.defaultProfileCreator(new CorpProfileCreator(this.getConfiguration(), this, corpUserService));
         super.clientInit();
     }
 

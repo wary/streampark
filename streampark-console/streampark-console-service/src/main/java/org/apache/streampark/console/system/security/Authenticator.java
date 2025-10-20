@@ -19,6 +19,7 @@ package org.apache.streampark.console.system.security;
 
 import org.apache.streampark.console.core.enums.LoginTypeEnum;
 import org.apache.streampark.console.system.entity.User;
+import org.pac4j.core.profile.CommonProfile;
 
 public interface Authenticator {
 
@@ -30,4 +31,7 @@ public interface Authenticator {
      * @return result object
      */
     User authenticate(String username, String password, LoginTypeEnum loginType) throws Exception;
+
+    User authenticateSso(String username, CommonProfile commonProfile) throws Exception;
+
 }

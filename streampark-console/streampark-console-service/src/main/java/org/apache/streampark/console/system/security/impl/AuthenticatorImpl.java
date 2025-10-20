@@ -27,6 +27,7 @@ import org.apache.streampark.console.system.service.UserService;
 
 import org.apache.commons.lang3.StringUtils;
 
+import org.pac4j.core.profile.CommonProfile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -48,12 +49,16 @@ public class AuthenticatorImpl implements Authenticator {
                 return passwordAuthenticate(username, password);
             case LDAP:
                 return ldapAuthenticate(username, password);
-            case SSO:
-                return ssoAuthenticate(username);
             default:
                 throw new ApiAlertException(
                     String.format("the login type [%s] is not supported.", loginType));
         }
+    }
+
+
+    @Override
+    public User authenticateSso(String username, CommonProfile profile) throws Exception {
+        return ssoAuthenticate(username, profile);
     }
 
     private User passwordAuthenticate(String username, String password) {
@@ -89,16 +94,14 @@ public class AuthenticatorImpl implements Authenticator {
                 "user [%s] can only sign in with %s",
                 username,
                 user.getLoginType());
-
             return user;
         }
         return this.newUserCreate(LoginTypeEnum.LDAP, username);
     }
 
-    private User ssoAuthenticate(String username) throws Exception {
+    private User ssoAuthenticate(String username, CommonProfile profile) throws Exception {
         // check if user exist
         User user = usersService.getByUsername(username);
-
         if (user != null) {
             ApiAlertException.throwIfTrue(
                 user.getLoginType() != LoginTypeEnum.SSO,
@@ -106,9 +109,18 @@ public class AuthenticatorImpl implements Authenticator {
                 username,
                 user.getLoginType());
             return user;
+        } else  {
+            user = this.newUserCreate(LoginTypeEnum.SSO, username);
         }
-
-        return this.newUserCreate(LoginTypeEnum.SSO, username);
+        if (profile != null) {
+            user.setEmail(profile.getEmail());
+            user.setNickName(profile.getDisplayName());
+            if (profile.getRoles().contains(UserTypeEnum.ADMIN.name())) {
+                user.setUserType(UserTypeEnum.ADMIN);
+            }
+            usersService.updateUser(user);
+        }
+        return user;
     }
 
     private User newUserCreate(LoginTypeEnum loginTypeEnum, String username) throws Exception {
