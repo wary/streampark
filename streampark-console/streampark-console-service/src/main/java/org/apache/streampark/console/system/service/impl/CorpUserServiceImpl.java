@@ -21,7 +21,7 @@ public class CorpUserServiceImpl implements CorpUserService {
     private String mammutHost;
     @Value("${mammut.app.key:49810556-4c7a-40b4-a457-aa8dfdcc9cd9}")
     private String mammutAppKey;
-    @Value("${mammut.master.key:63fcff76-1dc5-4c50-9aeb-a5785341714b}C")
+    @Value("${mammut.master.key:63fcff76-1dc5-4c50-9aeb-a5785341714b}")
     private String mammutMasterKey;
 
     private String mammutProject = "music_das";
