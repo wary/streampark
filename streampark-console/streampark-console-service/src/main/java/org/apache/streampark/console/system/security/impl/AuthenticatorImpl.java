@@ -55,7 +55,6 @@ public class AuthenticatorImpl implements Authenticator {
         }
     }
 
-
     @Override
     public User authenticateSso(String username, CommonProfile profile) throws Exception {
         return ssoAuthenticate(username, profile);
@@ -109,7 +108,7 @@ public class AuthenticatorImpl implements Authenticator {
                 username,
                 user.getLoginType());
             return user;
-        } else  {
+        } else {
             user = this.newUserCreate(LoginTypeEnum.SSO, username);
         }
         if (profile != null) {

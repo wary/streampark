@@ -295,6 +295,7 @@ export function handleSubmitParams(
       k8sPodTemplate: k8sTemplate.podTemplate,
       k8sJmPodTemplate: k8sTemplate.jmPodTemplate,
       k8sTmPodTemplate: k8sTemplate.tmPodTemplate,
+      ingressTemplate: k8sTemplate.ingressTemplate,
       k8sHadoopIntegration: values.useSysHadoopConf,
     });
   }

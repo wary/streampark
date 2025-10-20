@@ -17,8 +17,9 @@
 
 package org.apache.streampark.console.system.openid;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.streampark.console.system.service.CorpUserService;
+
+import lombok.extern.slf4j.Slf4j;
 import org.pac4j.core.config.Config;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;

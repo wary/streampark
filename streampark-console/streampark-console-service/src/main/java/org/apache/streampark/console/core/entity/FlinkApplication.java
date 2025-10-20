@@ -323,7 +323,7 @@ public class FlinkApplication extends BaseEntity {
     }
 
     public K8sPodTemplates getK8sPodTemplates() {
-        return K8sPodTemplates.of(k8sPodTemplate, k8sJmPodTemplate, k8sTmPodTemplate);
+        return K8sPodTemplates.of(k8sPodTemplate, k8sJmPodTemplate, k8sTmPodTemplate, ingressTemplate);
     }
 
     public void setState(Integer state) {

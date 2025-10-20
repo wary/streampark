@@ -33,6 +33,9 @@ object PodTemplateTool {
   val KUBERNETES_POD_TEMPLATE: PodTemplateType =
     PodTemplateType("kubernetes.pod-template-file", "pod-template.yaml")
 
+  val KUBERNETES_INGRESS_TEMPLATE: PodTemplateType =
+    PodTemplateType("kubernetes.ingress-template-file", "ingress-template.yaml")
+
   val KUBERNETES_JM_POD_TEMPLATE: PodTemplateType =
     PodTemplateType("kubernetes.pod-template-file.jobmanager", "jm-pod-template.yaml")
 
@@ -45,15 +48,28 @@ object PodTemplateTool {
   val KUBERNETES_EXECUTOR_POD_TEMPLATE: PodTemplateType =
     PodTemplateType("spark.kubernetes.executor.podTemplateFile", "executor-pod-template.yaml")
 
+  def refreshPodTemplateFiles(workspace: String, tmplFiles: Map[String, String]): K8sPodTemplateFiles = {
+    val getTemplateContent = (podTmpl: PodTemplateType) => {
+      tmplFiles.getOrElse(podTmpl.contentKey(), "")
+    }
+    preparePodTemplateFiles(
+      workspace,
+      K8sPodTemplates(
+        getTemplateContent(KUBERNETES_POD_TEMPLATE),
+        getTemplateContent(KUBERNETES_JM_POD_TEMPLATE),
+        getTemplateContent(KUBERNETES_TM_POD_TEMPLATE),
+        getTemplateContent(KUBERNETES_INGRESS_TEMPLATE)))
+  }
+
   /**
    * Prepare kubernetes pod template file to buildWorkspace direactory.
    *
    * @param buildWorkspace
-   *   project workspace dir of flink job
+   * project workspace dir of flink job
    * @param podTemplates
-   *   flink kubernetes pod templates
+   * flink kubernetes pod templates
    * @return
-   *   Map[k8s pod template option, template file output path]
+   * Map[k8s pod template option, template file output path]
    */
   def preparePodTemplateFiles(
       buildWorkspace: String,
@@ -70,12 +86,14 @@ object PodTemplateTool {
         val outputFile = new File(outputPath)
         FileUtils.write(outputFile, tmplContent, "UTF-8")
         podTempleMap += (podTmpl.key -> outputPath)
+        podTempleMap += (podTmpl.contentKey() -> tmplContent)
       }
     }
 
     outputTmplContent(podTemplates.podTemplate, KUBERNETES_POD_TEMPLATE)
     outputTmplContent(podTemplates.jmPodTemplate, KUBERNETES_JM_POD_TEMPLATE)
     outputTmplContent(podTemplates.tmPodTemplate, KUBERNETES_TM_POD_TEMPLATE)
+    outputTmplContent(podTemplates.ingressTemplate, KUBERNETES_INGRESS_TEMPLATE)
     K8sPodTemplateFiles(podTempleMap.toMap)
   }
 
@@ -83,11 +101,11 @@ object PodTemplateTool {
    * Prepare kubernetes pod template file to buildWorkspace direactory.
    *
    * @param buildWorkspace
-   *   project workspace dir of spark job
+   * project workspace dir of spark job
    * @param podTemplates
-   *   spark kubernetes pod templates
+   * spark kubernetes pod templates
    * @return
-   *   Map[k8s pod template option, template file output path]
+   * Map[k8s pod template option, template file output path]
    */
   def preparePodTemplateFiles(
       buildWorkspace: String,
@@ -115,7 +133,7 @@ object PodTemplateTool {
 
 /**
  * @param tmplFiles
- *   key of flink pod template configuration -> absolute file path of pod template
+ * key of flink pod template configuration -> absolute file path of pod template
  */
 case class K8sPodTemplateFiles(tmplFiles: Map[String, String]) {
 
@@ -127,4 +145,8 @@ case class K8sPodTemplateFiles(tmplFiles: Map[String, String]) {
 
 }
 
-case class PodTemplateType(key: String, fileName: String)
+case class PodTemplateType(key: String, fileName: String) {
+  def contentKey(): String = {
+    key + ".content"
+  }
+}

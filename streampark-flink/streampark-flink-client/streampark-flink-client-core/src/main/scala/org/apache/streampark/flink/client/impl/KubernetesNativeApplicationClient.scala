@@ -21,6 +21,7 @@ import org.apache.streampark.common.conf.ConfigKeys
 import org.apache.streampark.common.enums.FlinkDeployMode
 import org.apache.streampark.flink.client.`trait`.KubernetesNativeClientTrait
 import org.apache.streampark.flink.client.bean._
+import org.apache.streampark.flink.kubernetes.PodTemplateTool
 import org.apache.streampark.flink.kubernetes.ingress.IngressController
 import org.apache.streampark.flink.packer.pipeline.DockerImageBuildResponse
 
@@ -54,6 +55,8 @@ object KubernetesNativeApplicationClient extends KubernetesNativeClientTrait {
     val buildResult =
       submitRequest.buildResult.asInstanceOf[DockerImageBuildResponse]
 
+    PodTemplateTool.refreshPodTemplateFiles(buildResult.workspacePath, buildResult.podTemplatePaths)
+
     // add flink pipeline.jars configuration
     flinkConfig.safeSet(
       PipelineOptions.JARS,
@@ -73,11 +76,15 @@ object KubernetesNativeApplicationClient extends KubernetesNativeClientTrait {
       .getClusterClient
 
     val clusterId = clusterClient.getClusterId
-
     var webInterfaceURL = clusterClient.getWebInterfaceURL
-    val ingressDomain = flinkConfig.getString(ConfigKeys.STREAMPARK_INGRESS_MODE, "")
-    if (StringUtils.isNotBlank(ingressDomain)) {
-      webInterfaceURL = IngressController.configureIngress(ingressDomain, clusterId, submitRequest.kubernetesNamespace, flinkConfig)
+    val ingressTemplate = buildResult.podTemplatePaths.getOrElse(PodTemplateTool.KUBERNETES_INGRESS_TEMPLATE.contentKey(), "")
+    if (StringUtils.isNotBlank(ingressTemplate)) {
+      webInterfaceURL = IngressController.configureIngressTemplate(ingressTemplate, clusterId, submitRequest.kubernetesNamespace, flinkConfig)
+    } else {
+      val ingressDomain = flinkConfig.getString(ConfigKeys.STREAMPARK_INGRESS_MODE, "")
+      if (StringUtils.isNotBlank(ingressDomain)) {
+        webInterfaceURL = IngressController.configureIngress(ingressDomain, clusterId, submitRequest.kubernetesNamespace, flinkConfig)
+      }
     }
 
     val result = SubmitResponse(

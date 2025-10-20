@@ -25,16 +25,18 @@ import scala.util.Try
 case class K8sPodTemplates(
     podTemplate: String = "",
     jmPodTemplate: String = "",
-    tmPodTemplate: String = "") {
+    tmPodTemplate: String = "",
+    ingressTemplate: String = "") {
 
   def nonEmpty: Boolean = Option(podTemplate).exists(_.trim.nonEmpty) ||
     Option(jmPodTemplate).exists(_.trim.nonEmpty) ||
-    Option(tmPodTemplate).exists(_.trim.nonEmpty)
+    Option(tmPodTemplate).exists(_.trim.nonEmpty) ||
+    Option(ingressTemplate).exists(_.trim.nonEmpty)
 
   def isEmpty: Boolean = !nonEmpty
 
   override def hashCode(): Int =
-    Utils.hashCode(podTemplate, jmPodTemplate, tmPodTemplate)
+    Utils.hashCode(podTemplate, jmPodTemplate, tmPodTemplate, ingressTemplate)
 
   override def equals(obj: Any): Boolean = {
     obj match {
@@ -44,6 +46,8 @@ case class K8sPodTemplates(
         Try(jmPodTemplate.trim).getOrElse("") == Try(that.jmPodTemplate.trim)
           .getOrElse("") &&
         Try(tmPodTemplate.trim).getOrElse("") == Try(that.tmPodTemplate.trim)
+          .getOrElse("") &&
+        Try(ingressTemplate.trim).getOrElse("") == Try(that.ingressTemplate.trim)
           .getOrElse("")
       case _ => false
     }
@@ -55,8 +59,8 @@ object K8sPodTemplates {
 
   def empty: K8sPodTemplates = new K8sPodTemplates()
 
-  def of(podTemplate: String, jmPodTemplate: String, tmPodTemplate: String): K8sPodTemplates =
-    K8sPodTemplates(safeGet(podTemplate), safeGet(jmPodTemplate), safeGet(tmPodTemplate))
+  def of(podTemplate: String, jmPodTemplate: String, tmPodTemplate: String, ingressTemplate: String): K8sPodTemplates =
+    K8sPodTemplates(safeGet(podTemplate), safeGet(jmPodTemplate), safeGet(tmPodTemplate), safeGet(ingressTemplate))
 
   private[this] def safeGet(content: String): String = {
     content match {

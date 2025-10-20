@@ -475,7 +475,6 @@ public class FlinkApplicationActionServiceImpl
                 k8sNamespace,
                 exposedType,
                 application.getK8sConf());
-
         CompletableFuture<SubmitResponse> future =
             CompletableFuture.supplyAsync(() -> FlinkClient.submit(submitRequest), executorService);
 

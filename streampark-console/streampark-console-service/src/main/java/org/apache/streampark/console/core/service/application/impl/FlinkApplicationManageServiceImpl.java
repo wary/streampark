@@ -64,6 +64,7 @@ import org.apache.streampark.flink.packer.pipeline.PipelineStatusEnum;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
@@ -300,6 +301,12 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         if (serviceAccount != null) {
             record.setServiceAccount(serviceAccount.toString());
         }
+
+        Object kubeConfig = record.getHotParamsMap().get(KubernetesConfigOptions.KUBE_CONFIG_FILE.key());
+        if (kubeConfig != null) {
+            record.setK8sConf(kubeConfig.toString());
+        }
+
         record.setFlinkRestUrl(restUrl);
         setAppDurationIfNeeded(record, System.currentTimeMillis());
     }
@@ -547,11 +554,14 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         application.setDeployMode(appParam.getDeployMode());
         application.setFlinkImage(appParam.getFlinkImage());
         application.setK8sNamespace(appParam.getK8sNamespace());
+        application.setServiceAccount(application.getServiceAccount());
+        application.setK8sConf(application.getK8sConf());
         application.updateHotParams(appParam);
         application.setK8sRestExposedType(appParam.getK8sRestExposedType());
         application.setK8sPodTemplate(appParam.getK8sPodTemplate());
         application.setK8sJmPodTemplate(appParam.getK8sJmPodTemplate());
         application.setK8sTmPodTemplate(appParam.getK8sTmPodTemplate());
+        application.setIngressTemplate(appParam.getIngressTemplate());
         application.setK8sHadoopIntegration(appParam.getK8sHadoopIntegration());
 
         // changes to the following parameters do not affect running tasks
@@ -832,6 +842,9 @@ public class FlinkApplicationManageServiceImpl extends ServiceImpl<FlinkApplicat
         return FlinkDeployMode.isKubernetesMode(appParam.getDeployMode())
             && (ObjectUtils.trimNoEquals(
                 application.getK8sRestExposedType(), appParam.getK8sRestExposedType())
+                || ObjectUtils.trimNoEquals(
+                    application.getIngressTemplate(),
+                    appParam.getIngressTemplate())
                 || ObjectUtils.trimNoEquals(
                     application.getK8sJmPodTemplate(),
                     appParam.getK8sJmPodTemplate())

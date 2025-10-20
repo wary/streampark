@@ -613,6 +613,12 @@ export const useCreateAndEditSchema = (
     fetchK8sNamespaces().then((res) => {
       historyRecord.k8sNamespace = res;
     });
+    fetchServiceAccount().then((res) => {
+      historyRecord.serviceAccount = res;
+    });
+    fetchK8sConf().then((res) => {
+      historyRecord.k8sConf = res;
+    });
     fetchSessionClusterIds({ deployMode: DeployMode.KUBERNETES_SESSION }).then((res) => {
       historyRecord.k8sSessionClusterId = res;
     });
